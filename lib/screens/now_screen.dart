@@ -12,7 +12,7 @@ class NowScreen extends StatefulWidget {
 }
 
 class _NowScreenState extends State<NowScreen> {
-  final Set<String> takenMedicineIds = {};
+  
 
   List<Medicine> getActiveMedicines() {
     final currentHour = DateTime.now().hour;
@@ -21,22 +21,30 @@ class _NowScreenState extends State<NowScreen> {
       final isInsideTimeRange =
           currentHour >= medicine.startHour && currentHour < medicine.endHour;
 
-      final isNotTakenYet = !takenMedicineIds.contains(medicine.id);
+      final isNotTakenYet = !AppStore.isMedicineTaken(medicine.id);
 
       return isInsideTimeRange && isNotTakenYet;
     }).toList();
   }
 
+  bool hasAnyMedicineInCurrentTimeRange() {
+  final currentHour = DateTime.now().hour;
+
+  return AppStore.medicines.any((medicine) {
+    return currentHour >= medicine.startHour && currentHour < medicine.endHour;
+  });
+  }
+
   void markMedicineAsTaken(Medicine medicine) {
-    setState(() {
-      takenMedicineIds.add(medicine.id);
-      AppStore.markMedicineAsTaken(medicine);
-    });
+  setState(() {
+    AppStore.markMedicineAsTaken(medicine);
+  });
   }
 
   @override
   Widget build(BuildContext context) {
     final activeMedicines = getActiveMedicines();
+    final hasMedicineNow = hasAnyMedicineInCurrentTimeRange();
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -46,28 +54,36 @@ class _NowScreenState extends State<NowScreen> {
           centerTitle: true,
         ),
         body: activeMedicines.isEmpty
-            ? const _NoMedicineMessage()
-            : _CurrentMedicineCard(
-                medicine: activeMedicines.first,
-                remainingCount: activeMedicines.length,
-                onTaken: markMedicineAsTaken,
-              ),
+          ? _NoMedicineMessage(
+              message: hasMedicineNow
+                  ? 'تم أخذ كل أدوية هذه الفترة ✅'
+                  : 'لا يوجد دواء في الوقت الحالي',
+            )
+          : _CurrentMedicineCard(
+              medicine: activeMedicines.first,
+              remainingCount: activeMedicines.length,
+              onTaken: markMedicineAsTaken,
+            ),
       ),
     );
   }
 }
 
 class _NoMedicineMessage extends StatelessWidget {
-  const _NoMedicineMessage();
+  final String message;
+
+  const _NoMedicineMessage({
+    required this.message,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Text(
-          'لا يوجد دواء في الوقت الحالي',
-          style: TextStyle(fontSize: 30),
+          message,
+          style: const TextStyle(fontSize: 30),
           textAlign: TextAlign.center,
         ),
       ),

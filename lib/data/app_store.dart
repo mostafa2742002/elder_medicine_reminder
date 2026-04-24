@@ -15,8 +15,8 @@ class AppStore {
       id: '2',
       name: 'دواء السكر',
       dosage: 'قرص بعد الأكل',
-      startHour: 16,
-      endHour: 22,
+      startHour: 14,
+      endHour: 16,
     ),
     const Medicine(
       id: '3',
@@ -29,11 +29,19 @@ class AppStore {
 
   static final List<MedicineHistory> history = [];
 
+  static final Set<String> takenMedicineIds = {};
+
   static void addMedicine(Medicine medicine) {
-  medicines.add(medicine);
+    medicines.add(medicine);
+  }
+
+  static bool isMedicineTaken(String medicineId) {
+    return takenMedicineIds.contains(medicineId);
   }
 
   static void markMedicineAsTaken(Medicine medicine) {
+    takenMedicineIds.add(medicine.id);
+
     history.insert(
       0,
       MedicineHistory(
