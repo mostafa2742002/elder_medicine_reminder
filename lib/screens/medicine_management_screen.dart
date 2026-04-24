@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/fake_medicines.dart';
+import '../data/app_store.dart';
 
 class MedicineManagementScreen extends StatelessWidget {
   const MedicineManagementScreen({super.key});
@@ -16,9 +16,9 @@ class MedicineManagementScreen extends StatelessWidget {
         ),
         body: ListView.builder(
           padding: const EdgeInsets.all(16),
-          itemCount: fakeMedicines.length,
+          itemCount: AppStore.medicines.length,
           itemBuilder: (context, index) {
-            final medicine = fakeMedicines[index];
+            final medicine = AppStore.medicines[index];
 
             return Card(
               margin: const EdgeInsets.only(bottom: 16),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/fake_medicines.dart';
+import '../data/app_store.dart';
 import '../models/medicine.dart';
 
 class NowScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class _NowScreenState extends State<NowScreen> {
   List<Medicine> getActiveMedicines() {
     final currentHour = DateTime.now().hour;
 
-    return fakeMedicines.where((medicine) {
+    return AppStore.medicines.where((medicine) {
       final isInsideTimeRange =
           currentHour >= medicine.startHour && currentHour < medicine.endHour;
 
@@ -29,6 +29,7 @@ class _NowScreenState extends State<NowScreen> {
   void markMedicineAsTaken(Medicine medicine) {
     setState(() {
       takenMedicineIds.add(medicine.id);
+      AppStore.markMedicineAsTaken(medicine);
     });
   }
 

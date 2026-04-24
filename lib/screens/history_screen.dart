@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/fake_history.dart';
+import '../data/app_store.dart';
 import '../models/medicine_history.dart';
 import '../models/medicine_status.dart';
 
@@ -42,6 +42,8 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final historyRecords = AppStore.history;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -49,34 +51,45 @@ class HistoryScreen extends StatelessWidget {
           title: const Text('سجل الدواء'),
           centerTitle: true,
         ),
-        body: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: fakeHistory.length,
-          itemBuilder: (context, index) {
-            final history = fakeHistory[index];
-
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: ListTile(
-                leading: Icon(
-                  getStatusIcon(history.status),
-                  size: 42,
-                ),
-                title: Text(
-                  history.medicineName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+        body: historyRecords.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'لا يوجد سجل حتى الآن',
+                    style: TextStyle(fontSize: 28),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-                subtitle: Text(
-                  '${getStatusText(history.status)}\n${getTakenTimeText(history)}',
-                  style: const TextStyle(fontSize: 19),
-                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: historyRecords.length,
+                itemBuilder: (context, index) {
+                  final history = historyRecords[index];
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: ListTile(
+                      leading: Icon(
+                        getStatusIcon(history.status),
+                        size: 42,
+                      ),
+                      title: Text(
+                        history.medicineName,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${getStatusText(history.status)}\n${getTakenTimeText(history)}',
+                        style: const TextStyle(fontSize: 19),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }

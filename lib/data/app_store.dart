@@ -15,8 +15,8 @@ class AppStore {
       id: '2',
       name: 'دواء السكر',
       dosage: 'قرص بعد الأكل',
-      startHour: 14,
-      endHour: 16,
+      startHour: 16,
+      endHour: 22,
     ),
     const Medicine(
       id: '3',
