@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/medicine.dart';
 import '../repositories/history_repository.dart';
 import '../repositories/medicine_repository.dart';
-import '../utils/time_formatter.dart';
 import '../services/medicine_tracking_service.dart';
+import '../utils/time_formatter.dart';
 
 class NowScreen extends StatefulWidget {
   const NowScreen({super.key});
@@ -16,6 +16,7 @@ class NowScreen extends StatefulWidget {
 class _NowScreenState extends State<NowScreen> {
   final medicineRepository = MedicineRepository();
   final historyRepository = HistoryRepository();
+
   late final MedicineTrackingService medicineTrackingService;
 
   List<Medicine> activeMedicines = [];
@@ -39,6 +40,10 @@ class _NowScreenState extends State<NowScreen> {
     final now = DateTime.now();
     final medicinesInCurrentRange = medicineRepository.findActiveMedicines(now);
 
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       hasMedicineNow = medicinesInCurrentRange.isNotEmpty;
 
@@ -46,66 +51,53 @@ class _NowScreenState extends State<NowScreen> {
         return !historyRepository.isMedicineHandledToday(medicine.id);
       }).toList();
     });
-  } 
-  
+  }
+
   Future<void> markMedicineAsTaken(Medicine medicine) async {
-  await historyRepository.markMedicineAsTaken(medicine);
-  await loadActiveMedicines();
+    await historyRepository.markMedicineAsTaken(medicine);
+    await loadActiveMedicines();
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasActiveMedicine = activeMedicines.isNotEmpty;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('أدوية الآن'),
-          centerTitle: true,
-        ),
-        body: activeMedicines.isEmpty
-            ? _NoMedicineMessage(
-                message: hasMedicineNow
-                    ? 'تم أخذ كل أدوية هذه الفترة ✅'
-                    : 'لا يوجد دواء في الوقت الحالي',
-              )
-            : _CurrentMedicineCard(
-                medicine: activeMedicines.first,
-                remainingCount: activeMedicines.length,
-                onTaken: markMedicineAsTaken,
+        appBar: hasActiveMedicine
+            ? null
+            : AppBar(
+                title: const Text('أدوية الآن'),
+                centerTitle: true,
               ),
-      ),
-    );
-  }
-}
-
-class _NoMedicineMessage extends StatelessWidget {
-  final String message;
-
-  const _NoMedicineMessage({
-    required this.message,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          message,
-          style: const TextStyle(fontSize: 30),
-          textAlign: TextAlign.center,
+        body: SafeArea(
+          child: hasActiveMedicine
+              ? _CurrentMedicineAlert(
+                  medicine: activeMedicines.first,
+                  remainingCount: activeMedicines.length,
+                  onTaken: markMedicineAsTaken,
+                )
+              : _NoMedicineMessage(
+                  message: hasMedicineNow
+                      ? 'تم أخذ كل أدوية هذه الفترة ✅'
+                      : 'لا يوجد دواء في الوقت الحالي',
+                  icon: hasMedicineNow
+                      ? Icons.check_circle
+                      : Icons.notifications_off,
+                ),
         ),
       ),
     );
   }
 }
 
-class _CurrentMedicineCard extends StatelessWidget {
+class _CurrentMedicineAlert extends StatelessWidget {
   final Medicine medicine;
   final int remainingCount;
   final void Function(Medicine medicine) onTaken;
 
-  const _CurrentMedicineCard({
+  const _CurrentMedicineAlert({
     required this.medicine,
     required this.remainingCount,
     required this.onTaken,
@@ -113,69 +105,176 @@ class _CurrentMedicineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'عدد الأدوية المتبقية: $remainingCount',
-                  style: const TextStyle(
-                    fontSize: 22,
-                  ),
+    return Container(
+      width: double.infinity,
+      color: Colors.green.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            _RemainingMedicineBadge(remainingCount: remainingCount),
+
+            const Spacer(),
+
+            const Icon(
+              Icons.medication_liquid,
+              size: 130,
+              color: Colors.green,
+            ),
+
+            const SizedBox(height: 26),
+
+            const Text(
+              'حان وقت الدواء',
+              style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 20),
+
+            Text(
+              medicine.name,
+              style: const TextStyle(
+                fontSize: 44,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 18),
+
+            Text(
+              medicine.dosage,
+              style: const TextStyle(
+                fontSize: 28,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              'من ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
+              style: const TextStyle(
+                fontSize: 24,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const Spacer(),
+
+            SizedBox(
+              width: double.infinity,
+              height: 86,
+              child: FilledButton.icon(
+                onPressed: () {
+                  onTaken(medicine);
+                },
+                icon: const Icon(
+                  Icons.check_circle,
+                  size: 34,
                 ),
-                const SizedBox(height: 16),
-                const Icon(
-                  Icons.medication,
-                  size: 110,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'حان وقت الدواء',
+                label: const Text(
+                  'أخذت الدواء',
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.bold,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RemainingMedicineBadge extends StatelessWidget {
+  final int remainingCount;
+
+  const _RemainingMedicineBadge({
+    required this.remainingCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: Colors.green.shade200,
+        ),
+      ),
+      child: Text(
+        'عدد الأدوية المتبقية: $remainingCount',
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+class _NoMedicineMessage extends StatelessWidget {
+  final String message;
+  final IconData icon;
+
+  const _NoMedicineMessage({
+    required this.message,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 110,
+                  color: Colors.green,
+                ),
+                const SizedBox(height: 24),
                 Text(
-                  medicine.name,
+                  message,
                   style: const TextStyle(
-                    fontSize: 36,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
+                    height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  medicine.dosage,
-                  style: const TextStyle(fontSize: 26),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'من ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
-                  style: const TextStyle(fontSize: 22),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 80,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      onTaken(medicine);
-                    },
-                    child: const Text(
-                      'أخذت الدواء ✅',
-                      style: TextStyle(fontSize: 28),
-                    ),
+                const SizedBox(height: 18),
+                const Text(
+                  'يمكنك الرجوع للشاشة الرئيسية أو فتح سجل الدواء',
+                  style: TextStyle(
+                    fontSize: 22,
+                    height: 1.4,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),

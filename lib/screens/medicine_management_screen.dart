@@ -57,6 +57,19 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
 
     if (medicineWasAdded == true) {
       await loadMedicines();
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'تم حفظ الدواء بنجاح',
+            textDirection: TextDirection.rtl,
+          ),
+        ),
+      );
     }
   }
 
@@ -86,11 +99,12 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
                   style: TextStyle(fontSize: 18),
                 ),
               ),
-              FilledButton(
+              FilledButton.icon(
                 onPressed: () {
                   Navigator.pop(dialogContext, true);
                 },
-                child: const Text(
+                icon: const Icon(Icons.delete),
+                label: const Text(
                   'حذف',
                   style: TextStyle(fontSize: 18),
                 ),
@@ -130,7 +144,13 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إدارة الأدوية'),
+          title: const Text(
+            'إدارة الأدوية',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           centerTitle: true,
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -142,50 +162,157 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
           ),
         ),
         body: medicines.isEmpty
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'لا توجد أدوية حتى الآن',
-                    style: TextStyle(fontSize: 26),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: medicines.length,
-                itemBuilder: (context, index) {
-                  final medicine = medicines[index];
+            ? const _EmptyMedicinesMessage()
+            : RefreshIndicator(
+                onRefresh: loadMedicines,
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                  itemCount: medicines.length,
+                  itemBuilder: (context, index) {
+                    final medicine = medicines[index];
 
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.medication,
-                        size: 40,
-                      ),
-                      title: Text(
-                        medicine.name,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${medicine.dosage}\nمن الساعة ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
-                        style: const TextStyle(fontSize: 18),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () {
-                          confirmDeleteMedicine(medicine);
-                        },
-                      ),
-                    ),
-                  );
-                },
+                    return _MedicineCard(
+                      medicine: medicine,
+                      onDelete: () {
+                        confirmDeleteMedicine(medicine);
+                      },
+                    );
+                  },
+                ),
               ),
+      ),
+    );
+  }
+}
+
+class _EmptyMedicinesMessage extends StatelessWidget {
+  const _EmptyMedicinesMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(28),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.medication,
+                  size: 100,
+                  color: Colors.green,
+                ),
+                SizedBox(height: 22),
+                Text(
+                  'لا توجد أدوية حتى الآن',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'اضغط على زر "إضافة دواء" لإضافة أول دواء.',
+                  style: TextStyle(
+                    fontSize: 22,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MedicineCard extends StatelessWidget {
+  final Medicine medicine;
+  final VoidCallback onDelete;
+
+  const _MedicineCard({
+    required this.medicine,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final startTime = TimeFormatter.formatHour12(medicine.startHour);
+    final endTime = TimeFormatter.formatHour12(medicine.endHour);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(
+              Icons.medication,
+              size: 70,
+              color: Colors.green,
+            ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              medicine.name,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 10),
+
+            Text(
+              medicine.dosage,
+              style: const TextStyle(
+                fontSize: 23,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'من $startTime إلى $endTime',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            OutlinedButton.icon(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete),
+              label: const Text(
+                'حذف الدواء',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

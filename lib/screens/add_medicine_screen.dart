@@ -12,6 +12,7 @@ class AddMedicineScreen extends StatefulWidget {
 
 class _AddMedicineScreenState extends State<AddMedicineScreen> {
   final formKey = GlobalKey<FormState>();
+
   final medicineRepository = MedicineRepository();
 
   final nameController = TextEditingController();
@@ -57,15 +58,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final timeRangeError = validateTimeRange();
 
     if (timeRangeError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            timeRangeError,
-            textDirection: TextDirection.rtl,
-          ),
-        ),
-      );
-
+      showErrorMessage(timeRangeError);
       return;
     }
 
@@ -91,7 +84,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     Navigator.pop(context, true);
   }
-  
+
   String? validateRequiredText(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'هذا الحقل مطلوب';
@@ -118,7 +111,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     return null;
   }
 
-    String? validateTimeRange() {
+  String? validateTimeRange() {
     final startHourText = startHourController.text.trim();
     final endHourText = endHourController.text.trim();
 
@@ -139,6 +132,17 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     return null;
   }
 
+  void showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
 
   Widget buildPeriodDropdown({
     required String value,
@@ -149,6 +153,10 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
       decoration: const InputDecoration(
         labelText: 'الفترة',
         border: OutlineInputBorder(),
+      ),
+      style: const TextStyle(
+        fontSize: 20,
+        color: Colors.black,
       ),
       items: const [
         DropdownMenuItem(
@@ -170,144 +178,198 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('إضافة دواء'),
+          title: const Text(
+            'إضافة دواء',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           centerTitle: true,
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الدواء',
-                    border: OutlineInputBorder(),
-                  ),
-                  style: const TextStyle(fontSize: 22),
-                  validator: validateRequiredText,
-                ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _FormHeader(),
 
-                const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                TextFormField(
-                  controller: dosageController,
-                  decoration: const InputDecoration(
-                    labelText: 'الجرعة',
-                    hintText: 'مثال: قرص واحد',
-                    border: OutlineInputBorder(),
-                  ),
-                  style: const TextStyle(fontSize: 22),
-                  validator: validateRequiredText,
-                ),
-
-                const SizedBox(height: 24),
-
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'بداية فترة الدواء',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: startHourController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'الساعة',
-                          hintText: 'مثال: 8',
-                          border: OutlineInputBorder(),
+                  _FormSectionCard(
+                    title: 'بيانات الدواء',
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: nameController,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم الدواء',
+                            hintText: 'مثال: دواء الضغط',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.medication),
+                          ),
+                          style: const TextStyle(fontSize: 22),
+                          validator: validateRequiredText,
                         ),
-                        style: const TextStyle(fontSize: 22),
-                        validator: validateHour12,
-                      ),
-                    ),
 
-                    const SizedBox(width: 12),
+                        const SizedBox(height: 18),
 
-                    Expanded(
-                      child: buildPeriodDropdown(
-                        value: startPeriod,
-                        onChanged: (value) {
-                          setState(() {
-                            startPeriod = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                const Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'نهاية فترة الدواء',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: endHourController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'الساعة',
-                          hintText: 'مثال: 10',
-                          border: OutlineInputBorder(),
+                        TextFormField(
+                          controller: dosageController,
+                          decoration: const InputDecoration(
+                            labelText: 'الجرعة',
+                            hintText: 'مثال: قرص واحد بعد الأكل',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.format_list_numbered),
+                          ),
+                          style: const TextStyle(fontSize: 22),
+                          validator: validateRequiredText,
                         ),
-                        style: const TextStyle(fontSize: 22),
-                        validator: validateHour12,
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-                      child: buildPeriodDropdown(
-                        value: endPeriod,
-                        onChanged: (value) {
-                          setState(() {
-                            endPeriod = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 32),
-
-                SizedBox(
-                  width: double.infinity,
-                  height: 70,
-                  child: ElevatedButton(
-                    onPressed: saveMedicine,
-                    child: const Text(
-                      'حفظ الدواء',
-                      style: TextStyle(fontSize: 26),
+                      ],
                     ),
                   ),
-                ),
-              ],
+
+                  const SizedBox(height: 20),
+
+                  _FormSectionCard(
+                    title: 'فترة الدواء',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'بداية الفترة',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: startHourController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'الساعة',
+                                  hintText: 'مثال: 8',
+                                  border: OutlineInputBorder(),
+                                ),
+                                style: const TextStyle(fontSize: 22),
+                                validator: validateHour12,
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            Expanded(
+                              child: buildPeriodDropdown(
+                                value: startPeriod,
+                                onChanged: (value) {
+                                  setState(() {
+                                    startPeriod = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        const Text(
+                          'نهاية الفترة',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: endHourController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'الساعة',
+                                  hintText: 'مثال: 10',
+                                  border: OutlineInputBorder(),
+                                ),
+                                style: const TextStyle(fontSize: 22),
+                                validator: validateHour12,
+                              ),
+                            ),
+
+                            const SizedBox(width: 12),
+
+                            Expanded(
+                              child: buildPeriodDropdown(
+                                value: endPeriod,
+                                onChanged: (value) {
+                                  setState(() {
+                                    endPeriod = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        const Text(
+                          'مثال: من 8 صباحًا إلى 10 صباحًا',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.black54,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  SizedBox(
+                    height: 76,
+                    child: FilledButton.icon(
+                      onPressed: saveMedicine,
+                      icon: const Icon(
+                        Icons.save,
+                        size: 30,
+                      ),
+                      label: const Text(
+                        'حفظ الدواء',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'ملاحظة: التطبيق يدعم حاليًا الفترات داخل نفس اليوم فقط.',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.black54,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -315,3 +377,79 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     );
   }
 }
+
+class _FormHeader extends StatelessWidget {
+  const _FormHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(22),
+        child: Column(
+          children: [
+            Icon(
+              Icons.add_circle,
+              size: 80,
+              color: Colors.green,
+            ),
+            SizedBox(height: 14),
+            Text(
+              'أضف دواء جديد',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'اكتب اسم الدواء والجرعة والفترة التي يمكن أخذ الدواء خلالها.',
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FormSectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _FormSectionCard({
+    required this.title,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.right,
+            ),
+
+            const SizedBox(height: 18),
+
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+} 
