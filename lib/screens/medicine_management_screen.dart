@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../utils/time_formatter.dart';
 import '../data/app_store.dart';
 import 'add_medicine_screen.dart';
 
@@ -13,18 +14,6 @@ class MedicineManagementScreen extends StatefulWidget {
 
 class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
   
-  String formatHour12(int hour24) {
-  final period = hour24 < 12 ? 'صباحًا' : 'مساءً';
-
-  var hour12 = hour24 % 12;
-
-  if (hour12 == 0) {
-    hour12 = 12;
-  }
-
-  return '$hour12 $period';
-  }
-
   Future<void> openAddMedicineScreen() async {
     final medicineWasAdded = await Navigator.push<bool>(
       context,
@@ -85,7 +74,7 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        '${medicine.dosage}\nمن الساعة ${formatHour12(medicine.startHour)} إلى ${formatHour12(medicine.endHour)}',
+                        '${medicine.dosage}\nمن الساعة ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
                         style: const TextStyle(fontSize: 18),
                       ),
                     ),
