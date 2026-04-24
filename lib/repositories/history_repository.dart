@@ -5,11 +5,10 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 import '../models/medicine.dart';
 import '../models/medicine_history.dart';
 import '../models/medicine_status.dart';
+import '../storage/hive_storage.dart';
 
 class HistoryRepository {
-  static const String boxName = 'medicine_history';
-
-  Box<String> get _box => Hive.box<String>(boxName);
+  Box<String> get _box => Hive.box<String>(HiveStorage.medicineHistoryBoxName);
 
   List<MedicineHistory> findAll() {
     final records = _box.values.map((jsonString) {
@@ -32,8 +31,19 @@ class HistoryRepository {
     });
   }
 
+  bool isMedicineHandledToday(String medicineId) {
+    final today = DateTime.now();
+
+    return findAll().any((history) {
+      return history.medicineId == medicineId &&
+          _isSameDay(history.scheduledDate, today) &&
+          (history.status == MedicineStatus.taken ||
+              history.status == MedicineStatus.missed);
+    });
+  }
+
   Future<void> markMedicineAsTaken(Medicine medicine) async {
-    if (isMedicineTakenToday(medicine.id)) {
+    if (isMedicineHandledToday(medicine.id)) {
       return;
     }
 
@@ -46,6 +56,25 @@ class HistoryRepository {
       scheduledDate: now,
       status: MedicineStatus.taken,
       takenAt: now,
+    );
+
+    await _box.put(history.id, jsonEncode(history.toJson()));
+  }
+
+  Future<void> markMedicineAsMissed(Medicine medicine) async {
+    if (isMedicineHandledToday(medicine.id)) {
+      return;
+    }
+
+    final now = DateTime.now();
+
+    final history = MedicineHistory(
+      id: now.microsecondsSinceEpoch.toString(),
+      medicineId: medicine.id,
+      medicineName: medicine.name,
+      scheduledDate: now,
+      status: MedicineStatus.missed,
+      takenAt: null,
     );
 
     await _box.put(history.id, jsonEncode(history.toJson()));

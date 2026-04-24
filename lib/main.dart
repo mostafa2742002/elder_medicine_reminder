@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'storage/hive_storage.dart';
 
 import 'screens/history_screen.dart';
 import 'screens/medicine_management_screen.dart';
@@ -8,10 +8,7 @@ import 'screens/now_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Hive.initFlutter();
-
-  await Hive.openBox<String>('medicines');
-  await Hive.openBox<String>('medicine_history');
+  await HiveStorage.initialize();
 
   runApp(const ElderMedicineApp());
 }
