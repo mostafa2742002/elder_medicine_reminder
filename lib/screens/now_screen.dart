@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_store.dart';
 import '../models/medicine.dart';
+import '../repositories/history_repository.dart';
+import '../repositories/medicine_repository.dart';
 import '../utils/time_formatter.dart';
 
 class NowScreen extends StatefulWidget {
@@ -12,40 +13,38 @@ class NowScreen extends StatefulWidget {
 }
 
 class _NowScreenState extends State<NowScreen> {
-  
+  final medicineRepository = MedicineRepository();
+  final historyRepository = HistoryRepository();
 
-  List<Medicine> getActiveMedicines() {
-    final currentHour = DateTime.now().hour;
+  List<Medicine> activeMedicines = [];
+  bool hasMedicineNow = false;
 
-    return AppStore.medicines.where((medicine) {
-      final isInsideTimeRange =
-          currentHour >= medicine.startHour && currentHour < medicine.endHour;
-
-      final isNotTakenYet = !AppStore.isMedicineTaken(medicine.id);
-
-      return isInsideTimeRange && isNotTakenYet;
-    }).toList();
+  @override
+  void initState() {
+    super.initState();
+    loadActiveMedicines();
   }
 
-  bool hasAnyMedicineInCurrentTimeRange() {
-  final currentHour = DateTime.now().hour;
+  void loadActiveMedicines() {
+    final now = DateTime.now();
+    final medicinesInCurrentRange = medicineRepository.findActiveMedicines(now);
 
-  return AppStore.medicines.any((medicine) {
-    return currentHour >= medicine.startHour && currentHour < medicine.endHour;
-  });
+    setState(() {
+      hasMedicineNow = medicinesInCurrentRange.isNotEmpty;
+
+      activeMedicines = medicinesInCurrentRange.where((medicine) {
+        return !historyRepository.isMedicineTakenToday(medicine.id);
+      }).toList();
+    });
   }
 
-  void markMedicineAsTaken(Medicine medicine) {
-  setState(() {
-    AppStore.markMedicineAsTaken(medicine);
-  });
+  Future<void> markMedicineAsTaken(Medicine medicine) async {
+    await historyRepository.markMedicineAsTaken(medicine);
+    loadActiveMedicines();
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeMedicines = getActiveMedicines();
-    final hasMedicineNow = hasAnyMedicineInCurrentTimeRange();
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -54,16 +53,16 @@ class _NowScreenState extends State<NowScreen> {
           centerTitle: true,
         ),
         body: activeMedicines.isEmpty
-          ? _NoMedicineMessage(
-              message: hasMedicineNow
-                  ? 'تم أخذ كل أدوية هذه الفترة ✅'
-                  : 'لا يوجد دواء في الوقت الحالي',
-            )
-          : _CurrentMedicineCard(
-              medicine: activeMedicines.first,
-              remainingCount: activeMedicines.length,
-              onTaken: markMedicineAsTaken,
-            ),
+            ? _NoMedicineMessage(
+                message: hasMedicineNow
+                    ? 'تم أخذ كل أدوية هذه الفترة ✅'
+                    : 'لا يوجد دواء في الوقت الحالي',
+              )
+            : _CurrentMedicineCard(
+                medicine: activeMedicines.first,
+                remainingCount: activeMedicines.length,
+                onTaken: markMedicineAsTaken,
+              ),
       ),
     );
   }
@@ -119,16 +118,12 @@ class _CurrentMedicineCard extends StatelessWidget {
                     fontSize: 22,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 const Icon(
                   Icons.medication,
                   size: 110,
                 ),
-
                 const SizedBox(height: 24),
-
                 const Text(
                   'حان وقت الدواء',
                   style: TextStyle(
@@ -137,9 +132,7 @@ class _CurrentMedicineCard extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 16),
-
                 Text(
                   medicine.name,
                   style: const TextStyle(
@@ -148,25 +141,19 @@ class _CurrentMedicineCard extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 12),
-
                 Text(
                   medicine.dosage,
                   style: const TextStyle(fontSize: 26),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 8),
-
                 Text(
                   'من ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
                   style: const TextStyle(fontSize: 22),
                   textAlign: TextAlign.center,
                 ),
-
                 const SizedBox(height: 32),
-
                 SizedBox(
                   width: double.infinity,
                   height: 80,

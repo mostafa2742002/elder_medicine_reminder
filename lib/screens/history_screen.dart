@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_store.dart';
 import '../models/medicine_history.dart';
 import '../models/medicine_status.dart';
+import '../repositories/history_repository.dart';
 
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  final historyRepository = HistoryRepository();
+
+  List<MedicineHistory> historyRecords = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadHistory();
+  }
+
+  void loadHistory() {
+    setState(() {
+      historyRecords = historyRepository.findAll();
+    });
+  }
 
   String getStatusText(MedicineStatus status) {
     switch (status) {
@@ -42,8 +63,6 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final historyRecords = AppStore.history;
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
