@@ -40,6 +40,10 @@ class AppStore {
   }
 
   static void markMedicineAsTaken(Medicine medicine) {
+    if (takenMedicineIds.contains(medicine.id)) {
+      return;
+    }
+
     takenMedicineIds.add(medicine.id);
 
     history.insert(

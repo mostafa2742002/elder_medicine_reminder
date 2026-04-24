@@ -16,4 +16,30 @@ class MedicineHistory {
     required this.status,
     this.takenAt,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'medicineId': medicineId,
+      'medicineName': medicineName,
+      'scheduledDate': scheduledDate.toIso8601String(),
+      'status': status.toJson(),
+      'takenAt': takenAt?.toIso8601String(),
+    };
+  }
+
+  factory MedicineHistory.fromJson(Map<String, dynamic> json) {
+    final takenAtValue = json['takenAt'];
+
+    return MedicineHistory(
+      id: json['id'] as String,
+      medicineId: json['medicineId'] as String,
+      medicineName: json['medicineName'] as String,
+      scheduledDate: DateTime.parse(json['scheduledDate'] as String),
+      status: MedicineStatus.fromJson(json['status'] as String),
+      takenAt: takenAtValue == null
+          ? null
+          : DateTime.parse(takenAtValue as String),
+    );
+  }
 }

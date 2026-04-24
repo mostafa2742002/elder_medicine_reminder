@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'screens/history_screen.dart';
 import 'screens/medicine_management_screen.dart';
 import 'screens/now_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+
+  await Hive.openBox<String>('medicines');
+  await Hive.openBox<String>('medicine_history');
+
   runApp(const ElderMedicineApp());
 }
 
@@ -71,7 +79,6 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 22),
               ),
               const SizedBox(height: 40),
-
               SizedBox(
                 width: double.infinity,
                 height: 70,
@@ -85,9 +92,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               SizedBox(
                 width: double.infinity,
                 height: 70,
@@ -101,9 +106,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               SizedBox(
                 width: double.infinity,
                 height: 70,
