@@ -46,6 +46,87 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  Future<void> confirmClearHistory() async {
+    if (historyRecords.isEmpty) {
+      showMessage('لا يوجد سجل لحذفه');
+      return;
+    }
+
+    final shouldClear = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text(
+              'حذف السجل',
+              textAlign: TextAlign.right,
+            ),
+            content: const Text(
+              'هل تريد حذف سجل الدواء بالكامل؟\nلن يتم حذف الأدوية نفسها.',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.5,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext, false);
+                },
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(dialogContext, true);
+                },
+                icon: const Icon(Icons.delete),
+                label: const Text(
+                  'حذف السجل',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (shouldClear == true) {
+      await clearHistory();
+    }
+  }
+
+  Future<void> clearHistory() async {
+    await historyRepository.clearAll();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      historyRecords = [];
+    });
+
+    showMessage('تم حذف سجل الدواء');
+  }
+
+  void showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          textDirection: TextDirection.rtl,
+          style: const TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+
   String getStatusText(MedicineHistory history) {
     switch (history.status) {
       case MedicineStatus.pending:
@@ -102,6 +183,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final hasHistory = historyRecords.isNotEmpty;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -114,10 +197,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'حذف السجل',
+              onPressed: confirmClearHistory,
+              icon: const Icon(Icons.delete_sweep),
+            ),
+          ],
         ),
-        body: historyRecords.isEmpty
-            ? const _EmptyHistoryMessage()
-            : RefreshIndicator(
+        body: hasHistory
+            ? RefreshIndicator(
                 onRefresh: loadHistory,
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16),
@@ -135,7 +224,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     );
                   },
                 ),
-              ),
+              )
+            : const _EmptyHistoryMessage(),
       ),
     );
   }
@@ -221,9 +311,7 @@ class _HistoryCard extends StatelessWidget {
               size: 76,
               color: statusColor,
             ),
-
             const SizedBox(height: 12),
-
             Text(
               history.medicineName,
               style: const TextStyle(
@@ -233,9 +321,7 @@ class _HistoryCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 12),
-
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -258,9 +344,7 @@ class _HistoryCard extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-
             const SizedBox(height: 14),
-
             Text(
               dateLabel,
               style: const TextStyle(
@@ -270,9 +354,7 @@ class _HistoryCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 8),
-
             Text(
               statusText,
               style: const TextStyle(

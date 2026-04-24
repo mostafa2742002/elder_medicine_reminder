@@ -21,6 +21,26 @@ class HistoryRepository {
     return records;
   }
 
+  List<MedicineHistory> findTodayRecords() {
+    final today = DateTime.now();
+
+    return findAll().where((history) {
+      return _isSameDay(history.scheduledDate, today);
+    }).toList();
+  }
+
+  int countTakenToday() {
+    return findTodayRecords().where((history) {
+      return history.status == MedicineStatus.taken;
+    }).length;
+  }
+
+  int countMissedToday() {
+    return findTodayRecords().where((history) {
+      return history.status == MedicineStatus.missed;
+    }).length;
+  }
+
   bool isMedicineTakenToday(String medicineId) {
     final today = DateTime.now();
 
@@ -78,6 +98,10 @@ class HistoryRepository {
     );
 
     await _box.put(history.id, jsonEncode(history.toJson()));
+  }
+
+  Future<void> clearAll() async {
+    await _box.clear();
   }
 
   bool _isSameDay(DateTime first, DateTime second) {
