@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../models/medicine.dart';
+import '../repositories/history_repository.dart';
 import '../repositories/medicine_repository.dart';
+import '../services/medicine_tracking_service.dart';
 import '../utils/time_formatter.dart';
 import 'add_medicine_screen.dart';
 
@@ -15,16 +17,31 @@ class MedicineManagementScreen extends StatefulWidget {
 
 class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
   final medicineRepository = MedicineRepository();
+  final historyRepository = HistoryRepository();
+
+  late final MedicineTrackingService medicineTrackingService;
 
   List<Medicine> medicines = [];
 
   @override
   void initState() {
     super.initState();
+
+    medicineTrackingService = MedicineTrackingService(
+      medicineRepository: medicineRepository,
+      historyRepository: historyRepository,
+    );
+
     loadMedicines();
   }
 
-  void loadMedicines() {
+  Future<void> loadMedicines() async {
+    await medicineTrackingService.markExpiredMedicinesAsMissed();
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       medicines = medicineRepository.findAll();
     });
@@ -39,13 +56,72 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
     );
 
     if (medicineWasAdded == true) {
-      loadMedicines();
+      await loadMedicines();
+    }
+  }
+
+  Future<void> confirmDeleteMedicine(Medicine medicine) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: const Text(
+              'حذف الدواء',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'هل تريد حذف "${medicine.name}"؟',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 20),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext, false);
+                },
+                child: const Text(
+                  'إلغاء',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(dialogContext, true);
+                },
+                child: const Text(
+                  'حذف',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await deleteMedicine(medicine);
     }
   }
 
   Future<void> deleteMedicine(Medicine medicine) async {
     await medicineRepository.deleteById(medicine.id);
-    loadMedicines();
+    await loadMedicines();
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'تم حذف ${medicine.name}',
+          textDirection: TextDirection.rtl,
+        ),
+      ),
+    );
   }
 
   @override
@@ -67,9 +143,13 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
         ),
         body: medicines.isEmpty
             ? const Center(
-                child: Text(
-                  'لا توجد أدوية حتى الآن',
-                  style: TextStyle(fontSize: 26),
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'لا توجد أدوية حتى الآن',
+                    style: TextStyle(fontSize: 26),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               )
             : ListView.builder(
@@ -99,7 +179,7 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
                       trailing: IconButton(
                         icon: const Icon(Icons.delete),
                         onPressed: () {
-                          deleteMedicine(medicine);
+                          confirmDeleteMedicine(medicine);
                         },
                       ),
                     ),

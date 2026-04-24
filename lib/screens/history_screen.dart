@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../repositories/medicine_repository.dart';
+import '../services/medicine_tracking_service.dart';
 import '../models/medicine_history.dart';
 import '../models/medicine_status.dart';
 import '../repositories/history_repository.dart';
@@ -13,16 +15,26 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final historyRepository = HistoryRepository();
+  final medicineRepository = MedicineRepository();
+  late final MedicineTrackingService medicineTrackingService;
 
   List<MedicineHistory> historyRecords = [];
 
   @override
   void initState() {
     super.initState();
+
+    medicineTrackingService = MedicineTrackingService(
+      medicineRepository: medicineRepository,
+      historyRepository: historyRepository,
+    );
+
     loadHistory();
   }
 
-  void loadHistory() {
+  Future<void> loadHistory() async {
+    await medicineTrackingService.markExpiredMedicinesAsMissed();
+
     setState(() {
       historyRecords = historyRepository.findAll();
     });

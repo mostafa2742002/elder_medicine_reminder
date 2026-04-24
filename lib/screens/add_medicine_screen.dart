@@ -46,11 +46,26 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     return hour12 + 12;
   }
-  
+
   Future<void> saveMedicine() async {
     final isValid = formKey.currentState!.validate();
 
     if (!isValid) {
+      return;
+    }
+
+    final timeRangeError = validateTimeRange();
+
+    if (timeRangeError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            timeRangeError,
+            textDirection: TextDirection.rtl,
+          ),
+        ),
+      );
+
       return;
     }
 
@@ -76,6 +91,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     Navigator.pop(context, true);
   }
+  
   String? validateRequiredText(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'هذا الحقل مطلوب';
@@ -101,6 +117,28 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     return null;
   }
+
+    String? validateTimeRange() {
+    final startHourText = startHourController.text.trim();
+    final endHourText = endHourController.text.trim();
+
+    final startHour12 = int.tryParse(startHourText);
+    final endHour12 = int.tryParse(endHourText);
+
+    if (startHour12 == null || endHour12 == null) {
+      return null;
+    }
+
+    final startHour24 = convertTo24Hour(startHour12, startPeriod);
+    final endHour24 = convertTo24Hour(endHour12, endPeriod);
+
+    if (endHour24 <= startHour24) {
+      return 'وقت النهاية يجب أن يكون بعد وقت البداية';
+    }
+
+    return null;
+  }
+
 
   Widget buildPeriodDropdown({
     required String value,

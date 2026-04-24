@@ -4,6 +4,7 @@ import '../models/medicine.dart';
 import '../repositories/history_repository.dart';
 import '../repositories/medicine_repository.dart';
 import '../utils/time_formatter.dart';
+import '../services/medicine_tracking_service.dart';
 
 class NowScreen extends StatefulWidget {
   const NowScreen({super.key});
@@ -15,6 +16,7 @@ class NowScreen extends StatefulWidget {
 class _NowScreenState extends State<NowScreen> {
   final medicineRepository = MedicineRepository();
   final historyRepository = HistoryRepository();
+  late final MedicineTrackingService medicineTrackingService;
 
   List<Medicine> activeMedicines = [];
   bool hasMedicineNow = false;
@@ -22,10 +24,18 @@ class _NowScreenState extends State<NowScreen> {
   @override
   void initState() {
     super.initState();
+
+    medicineTrackingService = MedicineTrackingService(
+      medicineRepository: medicineRepository,
+      historyRepository: historyRepository,
+    );
+
     loadActiveMedicines();
   }
 
-  void loadActiveMedicines() {
+  Future<void> loadActiveMedicines() async {
+    await medicineTrackingService.markExpiredMedicinesAsMissed();
+
     final now = DateTime.now();
     final medicinesInCurrentRange = medicineRepository.findActiveMedicines(now);
 
@@ -33,14 +43,14 @@ class _NowScreenState extends State<NowScreen> {
       hasMedicineNow = medicinesInCurrentRange.isNotEmpty;
 
       activeMedicines = medicinesInCurrentRange.where((medicine) {
-        return !historyRepository.isMedicineTakenToday(medicine.id);
+        return !historyRepository.isMedicineHandledToday(medicine.id);
       }).toList();
     });
-  }
-
+  } 
+  
   Future<void> markMedicineAsTaken(Medicine medicine) async {
-    await historyRepository.markMedicineAsTaken(medicine);
-    loadActiveMedicines();
+  await historyRepository.markMedicineAsTaken(medicine);
+  await loadActiveMedicines();
   }
 
   @override
