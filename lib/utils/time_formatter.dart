@@ -1,5 +1,9 @@
 class TimeFormatter {
   static String formatHour12(int hour24) {
+    return formatTime12(hour24, 0);
+  }
+
+  static String formatTime12(int hour24, int minute) {
     final period = hour24 < 12 ? 'صباحًا' : 'مساءً';
 
     var hour12 = hour24 % 12;
@@ -8,21 +12,13 @@ class TimeFormatter {
       hour12 = 12;
     }
 
-    return '$hour12 $period';
+    final minuteText = minute.toString().padLeft(2, '0');
+
+    return '$hour12:$minuteText $period';
   }
 
   static String formatDateTime12(DateTime dateTime) {
-    final period = dateTime.hour < 12 ? 'صباحًا' : 'مساءً';
-
-    var hour12 = dateTime.hour % 12;
-
-    if (hour12 == 0) {
-      hour12 = 12;
-    }
-
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-
-    return '$hour12:$minute $period';
+    return formatTime12(dateTime.hour, dateTime.minute);
   }
 
   static String formatArabicDateLabel(DateTime dateTime) {

@@ -6,12 +6,15 @@ import 'screens/history_screen.dart';
 import 'screens/medicine_management_screen.dart';
 import 'screens/now_screen.dart';
 import 'services/medicine_tracking_service.dart';
+import 'services/notification_service.dart';
 import 'storage/hive_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await HiveStorage.initialize();
+  await NotificationService.initialize();
+  await NotificationService.scheduleAllMedicineNotifications();
 
   runApp(const ElderMedicineApp());
 }
@@ -89,6 +92,10 @@ class _HomeScreenState extends State<HomeScreen> {
     await loadSummary();
   }
 
+  Future<void> showTestNotification() async {
+    await NotificationService.showTestNotification();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -103,6 +110,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              tooltip: 'اختبار التنبيه',
+              onPressed: showTestNotification,
+              icon: const Icon(Icons.notifications_active),
+            ),
+          ],
         ),
         body: SafeArea(
           child: RefreshIndicator(
@@ -114,17 +128,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const _WelcomeCard(),
-
                   const SizedBox(height: 20),
-
                   _TodaySummaryCard(
                     medicineCount: medicineCount,
                     takenTodayCount: takenTodayCount,
                     missedTodayCount: missedTodayCount,
                   ),
-
                   const SizedBox(height: 28),
-
                   _HomeActionCard(
                     icon: Icons.medication,
                     title: 'أدوية الآن',
@@ -134,9 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       openScreen(context, const NowScreen());
                     },
                   ),
-
                   const SizedBox(height: 18),
-
                   _HomeActionCard(
                     icon: Icons.history,
                     title: 'سجل الدواء',
@@ -146,9 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       openScreen(context, const HistoryScreen());
                     },
                   ),
-
                   const SizedBox(height: 18),
-
                   _HomeActionCard(
                     icon: Icons.settings,
                     title: 'إدارة الأدوية',
@@ -237,9 +243,7 @@ class _TodaySummaryCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 18),
-
             Row(
               children: [
                 Expanded(

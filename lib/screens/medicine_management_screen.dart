@@ -4,6 +4,7 @@ import '../models/medicine.dart';
 import '../repositories/history_repository.dart';
 import '../repositories/medicine_repository.dart';
 import '../services/medicine_tracking_service.dart';
+import '../services/notification_service.dart';
 import '../utils/time_formatter.dart';
 import 'add_medicine_screen.dart';
 
@@ -56,13 +57,14 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
     );
 
     if (medicineWasSaved == true) {
+      await NotificationService.scheduleAllMedicineNotifications();
       await loadMedicines();
 
       if (!mounted) {
         return;
       }
 
-      showMessage('تم حفظ الدواء بنجاح');
+      showMessage('تم حفظ الدواء وتحديث التنبيهات');
     }
   }
 
@@ -77,13 +79,14 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
     );
 
     if (medicineWasSaved == true) {
+      await NotificationService.scheduleAllMedicineNotifications();
       await loadMedicines();
 
       if (!mounted) {
         return;
       }
 
-      showMessage('تم تعديل الدواء بنجاح');
+      showMessage('تم تعديل الدواء وتحديث التنبيهات');
     }
   }
 
@@ -136,13 +139,14 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
 
   Future<void> deleteMedicine(Medicine medicine) async {
     await medicineRepository.deleteById(medicine.id);
+    await NotificationService.scheduleAllMedicineNotifications();
     await loadMedicines();
 
     if (!mounted) {
       return;
     }
 
-    showMessage('تم حذف ${medicine.name}');
+    showMessage('تم حذف ${medicine.name} وتحديث التنبيهات');
   }
 
   void showMessage(String message) {
@@ -267,8 +271,15 @@ class _MedicineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final startTime = TimeFormatter.formatHour12(medicine.startHour);
-    final endTime = TimeFormatter.formatHour12(medicine.endHour);
+    final startTime = TimeFormatter.formatTime12(
+      medicine.startHour,
+      medicine.startMinute,
+    );
+
+    final endTime = TimeFormatter.formatTime12(
+      medicine.endHour,
+      medicine.endMinute,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),

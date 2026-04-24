@@ -22,8 +22,12 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   final nameController = TextEditingController();
   final dosageController = TextEditingController();
+
   final startHourController = TextEditingController();
+  final startMinuteController = TextEditingController();
+
   final endHourController = TextEditingController();
+  final endMinuteController = TextEditingController();
 
   String startPeriod = 'AM';
   String endPeriod = 'AM';
@@ -44,9 +48,19 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
         medicine.startHour,
       ).toString();
 
+      startMinuteController.text = medicine.startMinute.toString().padLeft(
+            2,
+            '0',
+          );
+
       endHourController.text = convertFrom24HourTo12Hour(
         medicine.endHour,
       ).toString();
+
+      endMinuteController.text = medicine.endMinute.toString().padLeft(
+            2,
+            '0',
+          );
 
       startPeriod = medicine.startHour < 12 ? 'AM' : 'PM';
       endPeriod = medicine.endHour < 12 ? 'AM' : 'PM';
@@ -58,7 +72,9 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     nameController.dispose();
     dosageController.dispose();
     startHourController.dispose();
+    startMinuteController.dispose();
     endHourController.dispose();
+    endMinuteController.dispose();
     super.dispose();
   }
 
@@ -103,7 +119,10 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     }
 
     final startHour12 = int.parse(startHourController.text.trim());
+    final startMinute = int.parse(startMinuteController.text.trim());
+
     final endHour12 = int.parse(endHourController.text.trim());
+    final endMinute = int.parse(endMinuteController.text.trim());
 
     final startHour24 = convertTo24Hour(startHour12, startPeriod);
     final endHour24 = convertTo24Hour(endHour12, endPeriod);
@@ -114,7 +133,9 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
       name: nameController.text.trim(),
       dosage: dosageController.text.trim(),
       startHour: startHour24,
+      startMinute: startMinute,
       endHour: endHour24,
+      endMinute: endMinute,
     );
 
     await medicineRepository.save(medicine);
@@ -152,25 +173,53 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     return null;
   }
 
+  String? validateMinute(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'هذا الحقل مطلوب';
+    }
+
+    final minute = int.tryParse(value.trim());
+
+    if (minute == null) {
+      return 'اكتب رقم صحيح';
+    }
+
+    if (minute < 0 || minute > 59) {
+      return 'الدقائق يجب أن تكون من 0 إلى 59';
+    }
+
+    return null;
+  }
+
   String? validateTimeRange() {
-    final startHourText = startHourController.text.trim();
-    final endHourText = endHourController.text.trim();
+    final startHour12 = int.tryParse(startHourController.text.trim());
+    final startMinute = int.tryParse(startMinuteController.text.trim());
 
-    final startHour12 = int.tryParse(startHourText);
-    final endHour12 = int.tryParse(endHourText);
+    final endHour12 = int.tryParse(endHourController.text.trim());
+    final endMinute = int.tryParse(endMinuteController.text.trim());
 
-    if (startHour12 == null || endHour12 == null) {
+    if (startHour12 == null ||
+        startMinute == null ||
+        endHour12 == null ||
+        endMinute == null) {
       return null;
     }
 
     final startHour24 = convertTo24Hour(startHour12, startPeriod);
     final endHour24 = convertTo24Hour(endHour12, endPeriod);
 
-    if (endHour24 <= startHour24) {
+    final startTotalMinutes = toMinutes(startHour24, startMinute);
+    final endTotalMinutes = toMinutes(endHour24, endMinute);
+
+    if (endTotalMinutes <= startTotalMinutes) {
       return 'وقت النهاية يجب أن يكون بعد وقت البداية';
     }
 
     return null;
+  }
+
+  int toMinutes(int hour, int minute) {
+    return (hour * 60) + minute;
   }
 
   void showErrorMessage(String message) {
@@ -190,7 +239,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: const InputDecoration(
         labelText: 'الفترة',
         border: OutlineInputBorder(),
@@ -248,9 +297,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                     subtitle: headerSubtitle,
                     icon: isEditMode ? Icons.edit : Icons.add_circle,
                   ),
-
                   const SizedBox(height: 24),
-
                   _FormSectionCard(
                     title: 'بيانات الدواء',
                     child: Column(
@@ -281,9 +328,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   _FormSectionCard(
                     title: 'فترة الدواء',
                     child: Column(
@@ -297,37 +342,20 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: startHourController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'الساعة',
-                                  hintText: 'مثال: 8',
-                                  border: OutlineInputBorder(),
-                                ),
-                                style: const TextStyle(fontSize: 22),
-                                validator: validateHour12,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: buildPeriodDropdown(
-                                value: startPeriod,
-                                onChanged: (value) {
-                                  setState(() {
-                                    startPeriod = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
+                        _TimeInputRow(
+                          hourController: startHourController,
+                          minuteController: startMinuteController,
+                          period: startPeriod,
+                          onPeriodChanged: (value) {
+                            setState(() {
+                              startPeriod = value!;
+                            });
+                          },
+                          validateHour: validateHour12,
+                          validateMinute: validateMinute,
+                          buildPeriodDropdown: buildPeriodDropdown,
                         ),
-
                         const SizedBox(height: 22),
-
                         const Text(
                           'نهاية الفترة',
                           style: TextStyle(
@@ -336,39 +364,22 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: endHourController,
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'الساعة',
-                                  hintText: 'مثال: 10',
-                                  border: OutlineInputBorder(),
-                                ),
-                                style: const TextStyle(fontSize: 22),
-                                validator: validateHour12,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: buildPeriodDropdown(
-                                value: endPeriod,
-                                onChanged: (value) {
-                                  setState(() {
-                                    endPeriod = value!;
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
+                        _TimeInputRow(
+                          hourController: endHourController,
+                          minuteController: endMinuteController,
+                          period: endPeriod,
+                          onPeriodChanged: (value) {
+                            setState(() {
+                              endPeriod = value!;
+                            });
+                          },
+                          validateHour: validateHour12,
+                          validateMinute: validateMinute,
+                          buildPeriodDropdown: buildPeriodDropdown,
                         ),
-
                         const SizedBox(height: 14),
-
                         const Text(
-                          'مثال: من 8 صباحًا إلى 10 صباحًا',
+                          'مثال: من 5:36 مساءً إلى 6:30 مساءً',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.black54,
@@ -378,9 +389,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 28),
-
                   SizedBox(
                     height: 76,
                     child: FilledButton.icon(
@@ -398,9 +407,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   const Text(
                     'ملاحظة: التطبيق يدعم حاليًا الفترات داخل نفس اليوم فقط.',
                     style: TextStyle(
@@ -416,6 +423,71 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TimeInputRow extends StatelessWidget {
+  final TextEditingController hourController;
+  final TextEditingController minuteController;
+  final String period;
+  final ValueChanged<String?> onPeriodChanged;
+  final FormFieldValidator<String> validateHour;
+  final FormFieldValidator<String> validateMinute;
+  final Widget Function({
+    required String value,
+    required ValueChanged<String?> onChanged,
+  }) buildPeriodDropdown;
+
+  const _TimeInputRow({
+    required this.hourController,
+    required this.minuteController,
+    required this.period,
+    required this.onPeriodChanged,
+    required this.validateHour,
+    required this.validateMinute,
+    required this.buildPeriodDropdown,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: hourController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'الساعة',
+              hintText: '5',
+              border: OutlineInputBorder(),
+            ),
+            style: const TextStyle(fontSize: 22),
+            validator: validateHour,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextFormField(
+            controller: minuteController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'الدقائق',
+              hintText: '36',
+              border: OutlineInputBorder(),
+            ),
+            style: const TextStyle(fontSize: 22),
+            validator: validateMinute,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: buildPeriodDropdown(
+            value: period,
+            onChanged: onPeriodChanged,
+          ),
+        ),
+      ],
     );
   }
 }

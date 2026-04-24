@@ -105,6 +105,16 @@ class _CurrentMedicineAlert extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final startTime = TimeFormatter.formatTime12(
+      medicine.startHour,
+      medicine.startMinute,
+    );
+
+    final endTime = TimeFormatter.formatTime12(
+      medicine.endHour,
+      medicine.endMinute,
+    );
+
     return Container(
       width: double.infinity,
       color: Colors.green.shade50,
@@ -113,17 +123,13 @@ class _CurrentMedicineAlert extends StatelessWidget {
         child: Column(
           children: [
             _RemainingMedicineBadge(remainingCount: remainingCount),
-
             const Spacer(),
-
             const Icon(
               Icons.medication_liquid,
               size: 130,
               color: Colors.green,
             ),
-
             const SizedBox(height: 26),
-
             const Text(
               'حان وقت الدواء',
               style: TextStyle(
@@ -132,9 +138,7 @@ class _CurrentMedicineAlert extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 20),
-
             Text(
               medicine.name,
               style: const TextStyle(
@@ -144,9 +148,7 @@ class _CurrentMedicineAlert extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 18),
-
             Text(
               medicine.dosage,
               style: const TextStyle(
@@ -155,20 +157,16 @@ class _CurrentMedicineAlert extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 12),
-
             Text(
-              'من ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
+              'من $startTime إلى $endTime',
               style: const TextStyle(
                 fontSize: 24,
                 height: 1.3,
               ),
               textAlign: TextAlign.center,
             ),
-
             const Spacer(),
-
             SizedBox(
               width: double.infinity,
               height: 86,
@@ -189,7 +187,6 @@ class _CurrentMedicineAlert extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
           ],
         ),

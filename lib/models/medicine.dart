@@ -3,14 +3,18 @@ class Medicine {
   final String name;
   final String dosage;
   final int startHour;
+  final int startMinute;
   final int endHour;
+  final int endMinute;
 
   const Medicine({
     required this.id,
     required this.name,
     required this.dosage,
     required this.startHour,
+    this.startMinute = 0,
     required this.endHour,
+    this.endMinute = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -19,7 +23,9 @@ class Medicine {
       'name': name,
       'dosage': dosage,
       'startHour': startHour,
+      'startMinute': startMinute,
       'endHour': endHour,
+      'endMinute': endMinute,
     };
   }
 
@@ -29,7 +35,9 @@ class Medicine {
       name: json['name'] as String,
       dosage: json['dosage'] as String,
       startHour: json['startHour'] as int,
+      startMinute: json['startMinute'] as int? ?? 0,
       endHour: json['endHour'] as int,
+      endMinute: json['endMinute'] as int? ?? 0,
     );
   }
 }
