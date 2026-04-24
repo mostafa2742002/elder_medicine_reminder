@@ -48,28 +48,42 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
   }
 
   Future<void> openAddMedicineScreen() async {
-    final medicineWasAdded = await Navigator.push<bool>(
+    final medicineWasSaved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => const AddMedicineScreen(),
       ),
     );
 
-    if (medicineWasAdded == true) {
+    if (medicineWasSaved == true) {
       await loadMedicines();
 
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تم حفظ الدواء بنجاح',
-            textDirection: TextDirection.rtl,
-          ),
+      showMessage('تم حفظ الدواء بنجاح');
+    }
+  }
+
+  Future<void> openEditMedicineScreen(Medicine medicine) async {
+    final medicineWasSaved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddMedicineScreen(
+          medicineToEdit: medicine,
         ),
-      );
+      ),
+    );
+
+    if (medicineWasSaved == true) {
+      await loadMedicines();
+
+      if (!mounted) {
+        return;
+      }
+
+      showMessage('تم تعديل الدواء بنجاح');
     }
   }
 
@@ -128,11 +142,16 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
       return;
     }
 
+    showMessage('تم حذف ${medicine.name}');
+  }
+
+  void showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'تم حذف ${medicine.name}',
+          message,
           textDirection: TextDirection.rtl,
+          style: const TextStyle(fontSize: 18),
         ),
       ),
     );
@@ -173,6 +192,9 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
 
                     return _MedicineCard(
                       medicine: medicine,
+                      onEdit: () {
+                        openEditMedicineScreen(medicine);
+                      },
                       onDelete: () {
                         confirmDeleteMedicine(medicine);
                       },
@@ -234,10 +256,12 @@ class _EmptyMedicinesMessage extends StatelessWidget {
 
 class _MedicineCard extends StatelessWidget {
   final Medicine medicine;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _MedicineCard({
     required this.medicine,
+    required this.onEdit,
     required this.onDelete,
   });
 
@@ -258,9 +282,7 @@ class _MedicineCard extends StatelessWidget {
               size: 70,
               color: Colors.green,
             ),
-
             const SizedBox(height: 12),
-
             Text(
               medicine.name,
               style: const TextStyle(
@@ -270,9 +292,7 @@ class _MedicineCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 10),
-
             Text(
               medicine.dosage,
               style: const TextStyle(
@@ -281,9 +301,7 @@ class _MedicineCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-
             const SizedBox(height: 12),
-
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -300,16 +318,31 @@ class _MedicineCard extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-
             const SizedBox(height: 16),
-
-            OutlinedButton.icon(
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete),
-              label: const Text(
-                'حذف الدواء',
-                style: TextStyle(fontSize: 20),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit),
+                    label: const Text(
+                      'تعديل',
+                      style: TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete),
+                    label: const Text(
+                      'حذف',
+                      style: TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

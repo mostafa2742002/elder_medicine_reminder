@@ -4,7 +4,12 @@ import '../models/medicine.dart';
 import '../repositories/medicine_repository.dart';
 
 class AddMedicineScreen extends StatefulWidget {
-  const AddMedicineScreen({super.key});
+  final Medicine? medicineToEdit;
+
+  const AddMedicineScreen({
+    super.key,
+    this.medicineToEdit,
+  });
 
   @override
   State<AddMedicineScreen> createState() => _AddMedicineScreenState();
@@ -23,6 +28,31 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   String startPeriod = 'AM';
   String endPeriod = 'AM';
 
+  bool get isEditMode => widget.medicineToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final medicine = widget.medicineToEdit;
+
+    if (medicine != null) {
+      nameController.text = medicine.name;
+      dosageController.text = medicine.dosage;
+
+      startHourController.text = convertFrom24HourTo12Hour(
+        medicine.startHour,
+      ).toString();
+
+      endHourController.text = convertFrom24HourTo12Hour(
+        medicine.endHour,
+      ).toString();
+
+      startPeriod = medicine.startHour < 12 ? 'AM' : 'PM';
+      endPeriod = medicine.endHour < 12 ? 'AM' : 'PM';
+    }
+  }
+
   @override
   void dispose() {
     nameController.dispose();
@@ -30,6 +60,16 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     startHourController.dispose();
     endHourController.dispose();
     super.dispose();
+  }
+
+  int convertFrom24HourTo12Hour(int hour24) {
+    final hour12 = hour24 % 12;
+
+    if (hour12 == 0) {
+      return 12;
+    }
+
+    return hour12;
   }
 
   int convertTo24Hour(int hour12, String period) {
@@ -69,7 +109,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final endHour24 = convertTo24Hour(endHour12, endPeriod);
 
     final medicine = Medicine(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: widget.medicineToEdit?.id ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       name: nameController.text.trim(),
       dosage: dosageController.text.trim(),
       startHour: startHour24,
@@ -174,13 +215,20 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final title = isEditMode ? 'تعديل الدواء' : 'إضافة دواء';
+    final headerTitle = isEditMode ? 'تعديل بيانات الدواء' : 'أضف دواء جديد';
+    final headerSubtitle = isEditMode
+        ? 'عدّل اسم الدواء أو الجرعة أو فترة الدواء.'
+        : 'اكتب اسم الدواء والجرعة والفترة التي يمكن أخذ الدواء خلالها.';
+    final saveButtonText = isEditMode ? 'حفظ التعديل' : 'حفظ الدواء';
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'إضافة دواء',
-            style: TextStyle(
+          title: Text(
+            title,
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
@@ -195,7 +243,11 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _FormHeader(),
+                  _FormHeader(
+                    title: headerTitle,
+                    subtitle: headerSubtitle,
+                    icon: isEditMode ? Icons.edit : Icons.add_circle,
+                  ),
 
                   const SizedBox(height: 24),
 
@@ -214,9 +266,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                           style: const TextStyle(fontSize: 22),
                           validator: validateRequiredText,
                         ),
-
                         const SizedBox(height: 18),
-
                         TextFormField(
                           controller: dosageController,
                           decoration: const InputDecoration(
@@ -246,9 +296,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         Row(
                           children: [
                             Expanded(
@@ -264,9 +312,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                                 validator: validateHour12,
                               ),
                             ),
-
                             const SizedBox(width: 12),
-
                             Expanded(
                               child: buildPeriodDropdown(
                                 value: startPeriod,
@@ -289,9 +335,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         Row(
                           children: [
                             Expanded(
@@ -307,9 +351,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                                 validator: validateHour12,
                               ),
                             ),
-
                             const SizedBox(width: 12),
-
                             Expanded(
                               child: buildPeriodDropdown(
                                 value: endPeriod,
@@ -343,13 +385,13 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                     height: 76,
                     child: FilledButton.icon(
                       onPressed: saveMedicine,
-                      icon: const Icon(
-                        Icons.save,
+                      icon: Icon(
+                        isEditMode ? Icons.check : Icons.save,
                         size: 30,
                       ),
-                      label: const Text(
-                        'حفظ الدواء',
-                        style: TextStyle(
+                      label: Text(
+                        saveButtonText,
+                        style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
                         ),
@@ -379,33 +421,41 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 }
 
 class _FormHeader extends StatelessWidget {
-  const _FormHeader();
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  const _FormHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Card(
+    return Card(
       child: Padding(
-        padding: EdgeInsets.all(22),
+        padding: const EdgeInsets.all(22),
         child: Column(
           children: [
             Icon(
-              Icons.add_circle,
+              icon,
               size: 80,
               color: Colors.green,
             ),
-            SizedBox(height: 14),
+            const SizedBox(height: 14),
             Text(
-              'أضف دواء جديد',
-              style: TextStyle(
+              title,
+              style: const TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              'اكتب اسم الدواء والجرعة والفترة التي يمكن أخذ الدواء خلالها.',
-              style: TextStyle(
+              subtitle,
+              style: const TextStyle(
                 fontSize: 20,
                 height: 1.4,
               ),
@@ -443,13 +493,11 @@ class _FormSectionCard extends StatelessWidget {
               ),
               textAlign: TextAlign.right,
             ),
-
             const SizedBox(height: 18),
-
             child,
           ],
         ),
       ),
     );
   }
-} 
+}

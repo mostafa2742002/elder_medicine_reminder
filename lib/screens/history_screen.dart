@@ -49,22 +49,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
   String getStatusText(MedicineHistory history) {
     switch (history.status) {
       case MedicineStatus.pending:
-        return 'في الانتظار ⏳';
+        return 'في الانتظار';
       case MedicineStatus.taken:
         return getTakenText(history);
       case MedicineStatus.missed:
-        return 'لم يتم أخذه ❌';
+        return 'لم يتم أخذه';
     }
   }
 
   String getTakenText(MedicineHistory history) {
     if (history.takenAt == null) {
-      return 'تم أخذه ✅';
+      return 'تم أخذه';
     }
 
     final takenTime = TimeFormatter.formatDateTime12(history.takenAt!);
 
-    return 'تم أخذه الساعة $takenTime ✅';
+    return 'تم أخذه الساعة $takenTime';
   }
 
   IconData getStatusIcon(MedicineStatus status) {
@@ -78,13 +78,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Color getStatusColor(MedicineStatus status) {
+    switch (status) {
+      case MedicineStatus.pending:
+        return Colors.orange;
+      case MedicineStatus.taken:
+        return Colors.green;
+      case MedicineStatus.missed:
+        return Colors.red;
+    }
+  }
+
+  String getStatusBadgeText(MedicineStatus status) {
+    switch (status) {
+      case MedicineStatus.pending:
+        return 'في الانتظار';
+      case MedicineStatus.taken:
+        return 'تم أخذه';
+      case MedicineStatus.missed:
+        return 'فائت';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('سجل الدواء'),
+          title: const Text(
+            'سجل الدواء',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           centerTitle: true,
         ),
         body: historyRecords.isEmpty
@@ -96,11 +124,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   itemCount: historyRecords.length,
                   itemBuilder: (context, index) {
                     final history = historyRecords[index];
+                    final statusColor = getStatusColor(history.status);
 
                     return _HistoryCard(
                       history: history,
                       statusText: getStatusText(history),
+                      statusBadgeText: getStatusBadgeText(history.status),
                       statusIcon: getStatusIcon(history.status),
+                      statusColor: statusColor,
                     );
                   },
                 ),
@@ -117,11 +148,40 @@ class _EmptyHistoryMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-          'لا يوجد سجل حتى الآن',
-          style: TextStyle(fontSize: 28),
-          textAlign: TextAlign.center,
+        padding: EdgeInsets.all(28),
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 100,
+                  color: Colors.green,
+                ),
+                SizedBox(height: 22),
+                Text(
+                  'لا يوجد سجل حتى الآن',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'سيظهر هنا الدواء الذي تم أخذه أو نسيانه.',
+                  style: TextStyle(
+                    fontSize: 22,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -131,12 +191,16 @@ class _EmptyHistoryMessage extends StatelessWidget {
 class _HistoryCard extends StatelessWidget {
   final MedicineHistory history;
   final String statusText;
+  final String statusBadgeText;
   final IconData statusIcon;
+  final Color statusColor;
 
   const _HistoryCard({
     required this.history,
     required this.statusText,
+    required this.statusBadgeText,
     required this.statusIcon,
+    required this.statusColor,
   });
 
   @override
@@ -147,27 +211,77 @@ class _HistoryCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        leading: Icon(
-          statusIcon,
-          size: 42,
-        ),
-        title: Text(
-          history.medicineName,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(
-            '$dateLabel\n$statusText',
-            style: const TextStyle(
-              fontSize: 19,
-              height: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(
+              statusIcon,
+              size: 76,
+              color: statusColor,
             ),
-          ),
+
+            const SizedBox(height: 12),
+
+            Text(
+              history.medicineName,
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: statusColor.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                statusBadgeText,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: statusColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            Text(
+              dateLabel,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              statusText,
+              style: const TextStyle(
+                fontSize: 22,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
