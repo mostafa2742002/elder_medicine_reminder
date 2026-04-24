@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../data/app_store.dart';
 import '../models/medicine.dart';
+import '../repositories/medicine_repository.dart';
 
 class AddMedicineScreen extends StatefulWidget {
   const AddMedicineScreen({super.key});
@@ -12,6 +12,7 @@ class AddMedicineScreen extends StatefulWidget {
 
 class _AddMedicineScreenState extends State<AddMedicineScreen> {
   final formKey = GlobalKey<FormState>();
+  final medicineRepository = MedicineRepository();
 
   final nameController = TextEditingController();
   final dosageController = TextEditingController();
@@ -45,8 +46,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     return hour12 + 12;
   }
-
-  void saveMedicine() {
+  
+  Future<void> saveMedicine() async {
     final isValid = formKey.currentState!.validate();
 
     if (!isValid) {
@@ -60,18 +61,21 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final endHour24 = convertTo24Hour(endHour12, endPeriod);
 
     final medicine = Medicine(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: nameController.text.trim(),
       dosage: dosageController.text.trim(),
       startHour: startHour24,
       endHour: endHour24,
     );
 
-    AppStore.addMedicine(medicine);
+    await medicineRepository.save(medicine);
+
+    if (!mounted) {
+      return;
+    }
 
     Navigator.pop(context, true);
   }
-
   String? validateRequiredText(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'هذا الحقل مطلوب';

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/medicine.dart';
+import '../repositories/medicine_repository.dart';
 import '../utils/time_formatter.dart';
-import '../data/app_store.dart';
 import 'add_medicine_screen.dart';
 
 class MedicineManagementScreen extends StatefulWidget {
@@ -13,7 +14,22 @@ class MedicineManagementScreen extends StatefulWidget {
 }
 
 class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
-  
+  final medicineRepository = MedicineRepository();
+
+  List<Medicine> medicines = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadMedicines();
+  }
+
+  void loadMedicines() {
+    setState(() {
+      medicines = medicineRepository.findAll();
+    });
+  }
+
   Future<void> openAddMedicineScreen() async {
     final medicineWasAdded = await Navigator.push<bool>(
       context,
@@ -23,14 +39,17 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
     );
 
     if (medicineWasAdded == true) {
-      setState(() {});
+      loadMedicines();
     }
+  }
+
+  Future<void> deleteMedicine(Medicine medicine) async {
+    await medicineRepository.deleteById(medicine.id);
+    loadMedicines();
   }
 
   @override
   Widget build(BuildContext context) {
-    final medicines = AppStore.medicines;
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -76,6 +95,12 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
                       subtitle: Text(
                         '${medicine.dosage}\nمن الساعة ${TimeFormatter.formatHour12(medicine.startHour)} إلى ${TimeFormatter.formatHour12(medicine.endHour)}',
                         style: const TextStyle(fontSize: 18),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () {
+                          deleteMedicine(medicine);
+                        },
                       ),
                     ),
                   );
