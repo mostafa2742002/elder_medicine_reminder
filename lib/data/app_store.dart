@@ -29,6 +29,10 @@ class AppStore {
 
   static final List<MedicineHistory> history = [];
 
+  static void addMedicine(Medicine medicine) {
+  medicines.add(medicine);
+  }
+
   static void markMedicineAsTaken(Medicine medicine) {
     history.insert(
       0,
