@@ -9,6 +9,8 @@ import 'package:timezone/timezone.dart' as timezone;
 import '../models/medicine.dart';
 import '../repositories/medicine_repository.dart';
 
+typedef NotificationTapHandler = void Function(String? payload);
+
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -18,7 +20,20 @@ class NotificationService {
   static const String _medicineChannelDescription =
       'تنبيهات مواعيد الدواء اليومية';
 
-  static Future<void> initialize() async {
+  static bool _wasAppLaunchedByNotification = false;
+  static String? _launchNotificationPayload;
+
+  static bool get wasAppLaunchedByNotification {
+    return _wasAppLaunchedByNotification;
+  }
+
+  static String? get launchNotificationPayload {
+    return _launchNotificationPayload;
+  }
+
+  static Future<void> initialize({
+    NotificationTapHandler? onNotificationTap,
+  }) async {
     if (kIsWeb) {
       return;
     }
@@ -36,7 +51,12 @@ class NotificationService {
 
     await _notificationsPlugin.initialize(
       settings: initializationSettings,
+      onDidReceiveNotificationResponse: (notificationResponse) {
+        onNotificationTap?.call(notificationResponse.payload);
+      },
     );
+
+    await _checkIfAppWasLaunchedByNotification();
 
     if (Platform.isAndroid) {
       final androidPlugin =
@@ -124,7 +144,19 @@ class NotificationService {
           category: AndroidNotificationCategory.reminder,
         ),
       ),
+      payload: 'test_notification',
     );
+  }
+
+  static Future<void> _checkIfAppWasLaunchedByNotification() async {
+    final launchDetails =
+        await _notificationsPlugin.getNotificationAppLaunchDetails();
+
+    _wasAppLaunchedByNotification =
+        launchDetails?.didNotificationLaunchApp ?? false;
+
+    _launchNotificationPayload =
+        launchDetails?.notificationResponse?.payload;
   }
 
   static timezone.TZDateTime _nextInstanceOfTime(int hour, int minute) {

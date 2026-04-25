@@ -17,18 +17,23 @@ class NowScreen extends StatefulWidget {
   State<NowScreen> createState() => _NowScreenState();
 }
 
-class _NowScreenState extends State<NowScreen> {
+class _NowScreenState extends State<NowScreen> with WidgetsBindingObserver {
   final medicineRepository = MedicineRepository();
   final historyRepository = HistoryRepository();
 
   late final MedicineTrackingService medicineTrackingService;
 
+  Timer? activeMedicineRefreshTimer;
+
   List<Medicine> activeMedicines = [];
   bool hasMedicineNow = false;
+  bool isLoadingActiveMedicines = false;
 
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
 
     medicineTrackingService = MedicineTrackingService(
       medicineRepository: medicineRepository,
@@ -36,15 +41,46 @@ class _NowScreenState extends State<NowScreen> {
     );
 
     loadActiveMedicines();
+    startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    activeMedicineRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      loadActiveMedicines();
+    }
+  }
+
+  void startAutoRefresh() {
+    activeMedicineRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) {
+        loadActiveMedicines();
+      },
+    );
   }
 
   Future<void> loadActiveMedicines() async {
+    if (isLoadingActiveMedicines) {
+      return;
+    }
+
+    isLoadingActiveMedicines = true;
+
     await medicineTrackingService.markExpiredMedicinesAsMissed();
 
     final now = DateTime.now();
     final medicinesInCurrentRange = medicineRepository.findActiveMedicines(now);
 
     if (!mounted) {
+      isLoadingActiveMedicines = false;
       return;
     }
 
@@ -55,6 +91,8 @@ class _NowScreenState extends State<NowScreen> {
         return !historyRepository.isMedicineHandledToday(medicine.id);
       }).toList();
     });
+
+    isLoadingActiveMedicines = false;
   }
 
   Future<void> markMedicineAsTaken(Medicine medicine) async {
