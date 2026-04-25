@@ -21,6 +21,11 @@ class NotificationService {
   static const String _medicineChannelDescription =
       'تنبيهات مواعيد الدواء اليومية';
 
+  static const String _urgentMedicineChannelId = 'urgent_medicine_reminders';
+  static const String _urgentMedicineChannelName = 'تنبيه آخر ساعة للدواء';
+  static const String _urgentMedicineChannelDescription =
+      'تنبيهات مهمة عند بداية آخر ساعة من وقت الدواء';
+
   static const String _appShortcutChannelId = 'app_shortcut_v2';
   static const String _appShortcutChannelName = 'اختصار فتح التطبيق';
   static const String _appShortcutChannelDescription =
@@ -125,6 +130,7 @@ class NotificationService {
 
     for (final medicine in medicines) {
       await scheduleDailyMedicineNotification(medicine);
+      await scheduleUrgentFinalHourNotification(medicine);
     }
   }
 
@@ -135,7 +141,9 @@ class NotificationService {
       return;
     }
 
-    final notificationId = _createNotificationId(medicine.id);
+    final notificationId = _createNotificationId(
+      '${medicine.id}-normal',
+    );
 
     final scheduledDate = _nextInstanceOfTime(
       medicine.startHour,
@@ -164,6 +172,53 @@ class NotificationService {
         notificationDetails: _buildMedicineNotificationDetails(
           fullScreenIntent: true,
         ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: medicine.id,
+      );
+    }
+  }
+
+  static Future<void> scheduleUrgentFinalHourNotification(
+    Medicine medicine,
+  ) async {
+    if (kIsWeb) {
+      return;
+    }
+
+    final finalHourAlertTime = _calculateFinalHourAlertTime(medicine);
+
+    if (finalHourAlertTime == null) {
+      return;
+    }
+
+    final notificationId = _createNotificationId(
+      '${medicine.id}-urgent-final-hour',
+    );
+
+    final scheduledDate = _nextInstanceOfTime(
+      finalHourAlertTime.hour,
+      finalHourAlertTime.minute,
+    );
+
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: 'تنبيه مهم: آخر ساعة للدواء',
+        body: '${medicine.name} - اضغط هنا لأخذ الدواء الآن',
+        scheduledDate: scheduledDate,
+        notificationDetails: _buildUrgentMedicineNotificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: medicine.id,
+      );
+    } on PlatformException {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: 'تنبيه مهم: آخر ساعة للدواء',
+        body: '${medicine.name} - اضغط هنا لأخذ الدواء الآن',
+        scheduledDate: scheduledDate,
+        notificationDetails: _buildUrgentMedicineNotificationDetails(),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
         payload: medicine.id,
@@ -214,6 +269,61 @@ class NotificationService {
         visibility: NotificationVisibility.public,
       ),
     );
+  }
+
+  static NotificationDetails _buildUrgentMedicineNotificationDetails() {
+    return const NotificationDetails(
+      android: AndroidNotificationDetails(
+        _urgentMedicineChannelId,
+        _urgentMedicineChannelName,
+        channelDescription: _urgentMedicineChannelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+        fullScreenIntent: true,
+        enableVibration: true,
+        playSound: true,
+        autoCancel: true,
+        visibility: NotificationVisibility.public,
+        ticker: 'آخر ساعة للدواء',
+        styleInformation: BigTextStyleInformation(
+          'هذا تنبيه مهم لأننا دخلنا في آخر ساعة من وقت الدواء.\n\n'
+          'اضغط هنا لفتح التطبيق، مشاهدة صورة الدواء، سماع الرسالة الصوتية، '
+          'ثم اضغط زر "أخذت الدواء".',
+          contentTitle: 'تنبيه مهم: آخر ساعة للدواء',
+          summaryText: 'يرجى أخذ الدواء الآن',
+        ),
+      ),
+    );
+  }
+
+  static _MedicineAlertTime? _calculateFinalHourAlertTime(Medicine medicine) {
+    final startTotalMinutes = _toMinutes(
+      medicine.startHour,
+      medicine.startMinute,
+    );
+
+    final endTotalMinutes = _toMinutes(
+      medicine.endHour,
+      medicine.endMinute,
+    );
+
+    final rangeDurationMinutes = endTotalMinutes - startTotalMinutes;
+
+    if (rangeDurationMinutes <= 60) {
+      return null;
+    }
+
+    final finalHourStartMinutes = endTotalMinutes - 60;
+
+    return _MedicineAlertTime(
+      hour: finalHourStartMinutes ~/ 60,
+      minute: finalHourStartMinutes % 60,
+    );
+  }
+
+  static int _toMinutes(int hour, int minute) {
+    return (hour * 60) + minute;
   }
 
   static Future<void> _requestAndroidNotificationPermissions() async {
@@ -270,4 +380,14 @@ class NotificationService {
       timezone.getLocation(timezoneInfo.identifier),
     );
   }
+}
+
+class _MedicineAlertTime {
+  final int hour;
+  final int minute;
+
+  const _MedicineAlertTime({
+    required this.hour,
+    required this.minute,
+  });
 }

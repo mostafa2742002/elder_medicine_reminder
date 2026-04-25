@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
@@ -13,11 +12,6 @@ class MedicineRepository {
     final jsonString = jsonEncode(medicine.toJson());
 
     await _box.put(medicine.id, jsonString);
-
-    developer.log(
-      'Medicine saved: id=${medicine.id}, name=${medicine.name}, total=${_box.length}',
-      name: 'MedicineRepository',
-    );
   }
 
   List<Medicine> findAll() {
@@ -35,24 +29,14 @@ class MedicineRepository {
         final medicine = Medicine.fromJson(jsonMap);
 
         medicines.add(medicine);
-      } catch (exception, stackTrace) {
-        developer.log(
-          'Failed to read medicine record. key=$key',
-          name: 'MedicineRepository',
-          error: exception,
-          stackTrace: stackTrace,
-        );
+      } catch (_) {
+        continue;
       }
     }
 
     medicines.sort((first, second) {
       return first.name.compareTo(second.name);
     });
-
-    developer.log(
-      'Loaded medicines count=${medicines.length}, rawBoxCount=${_box.length}',
-      name: 'MedicineRepository',
-    );
 
     return medicines;
   }
@@ -77,11 +61,6 @@ class MedicineRepository {
 
   Future<void> deleteById(String id) async {
     await _box.delete(id);
-
-    developer.log(
-      'Medicine deleted: id=$id, total=${_box.length}',
-      name: 'MedicineRepository',
-    );
   }
 
   int _toMinutes(int hour, int minute) {

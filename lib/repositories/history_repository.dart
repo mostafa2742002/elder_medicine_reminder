@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
@@ -25,24 +24,14 @@ class HistoryRepository {
         final history = MedicineHistory.fromJson(jsonMap);
 
         historyItems.add(history);
-      } catch (exception, stackTrace) {
-        developer.log(
-          'Failed to read history record. key=$key',
-          name: 'HistoryRepository',
-          error: exception,
-          stackTrace: stackTrace,
-        );
+      } catch (_) {
+        continue;
       }
     }
 
     historyItems.sort((first, second) {
       return second.createdAt.compareTo(first.createdAt);
     });
-
-    developer.log(
-      'Loaded history count=${historyItems.length}, rawBoxCount=${_box.length}',
-      name: 'HistoryRepository',
-    );
 
     return historyItems;
   }
@@ -104,11 +93,6 @@ class HistoryRepository {
     final jsonString = jsonEncode(history.toJson());
 
     await _box.put(history.id, jsonString);
-
-    developer.log(
-      'History saved: id=${history.id}, status=${history.status}, total=${_box.length}',
-      name: 'HistoryRepository',
-    );
   }
 
   String _createHistoryId(String medicineId, DateTime dateTime) {
