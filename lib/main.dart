@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'screens/history_screen.dart';
 import 'screens/medicine_management_screen.dart';
 import 'screens/now_screen.dart';
+import 'screens/pin_lock_screen.dart';
 import 'services/notification_service.dart';
 import 'storage/hive_storage.dart';
 
-final GlobalKey<_MainNavigationScreenState> mainNavigationKey =
-    GlobalKey<_MainNavigationScreenState>();
+final GlobalKey<MainNavigationScreenState> mainNavigationKey =
+    GlobalKey<MainNavigationScreenState>();
+
+final GlobalKey<HistoryScreenState> historyScreenKey =
+    GlobalKey<HistoryScreenState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,11 +24,11 @@ Future<void> main() async {
     },
   );
 
-  runApp(const ElderMedicineReminderApp());
+  runApp(const ElderMedicineApp());
 }
 
-class ElderMedicineReminderApp extends StatelessWidget {
-  const ElderMedicineReminderApp({super.key});
+class ElderMedicineApp extends StatelessWidget {
+  const ElderMedicineApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -63,23 +67,32 @@ class MainNavigationScreen extends StatefulWidget {
   });
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainNavigationScreen> createState() => MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  late int selectedIndex;
+class MainNavigationScreenState extends State<MainNavigationScreen> {
+  static const int nowTabIndex = 0;
+  static const int historyTabIndex = 1;
+  static const int medicineManagementTabIndex = 2;
 
-  final List<Widget> screens = const [
-    NowScreen(),
-    HistoryScreen(),
-    MedicineManagementScreen(),
-  ];
+  static const String caregiverPin = '1234';
+
+  late int selectedIndex;
+  late final List<Widget> screens;
+
+  bool caregiverAreaUnlocked = false;
 
   @override
   void initState() {
     super.initState();
 
     selectedIndex = widget.initialTabIndex;
+
+    screens = [
+      const NowScreen(),
+      HistoryScreen(key: historyScreenKey),
+      const MedicineManagementScreen(),
+    ];
 
     if (NotificationService.wasAppLaunchedByNotification) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -94,11 +107,47 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     }
 
     setState(() {
-      selectedIndex = 0;
+      selectedIndex = nowTabIndex;
     });
   }
 
-  void changeSelectedScreen(int index) {
+  Future<void> changeSelectedScreen(int index) async {
+    if (index == historyTabIndex) {
+      historyScreenKey.currentState?.refreshHistory();
+
+      setState(() {
+        selectedIndex = historyTabIndex;
+      });
+
+      return;
+    }
+
+    if (index == medicineManagementTabIndex && !caregiverAreaUnlocked) {
+      final isPinCorrect = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PinLockScreen(
+            correctPin: caregiverPin,
+          ),
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (isPinCorrect != true) {
+        return;
+      }
+
+      setState(() {
+        caregiverAreaUnlocked = true;
+        selectedIndex = medicineManagementTabIndex;
+      });
+
+      return;
+    }
+
     setState(() {
       selectedIndex = index;
     });
@@ -129,8 +178,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               label: 'سجل الدواء',
             ),
             NavigationDestination(
-              icon: Icon(Icons.medication_outlined),
-              selectedIcon: Icon(Icons.medication),
+              icon: Icon(Icons.lock_outline),
+              selectedIcon: Icon(Icons.lock_open),
               label: 'إدارة الأدوية',
             ),
           ],

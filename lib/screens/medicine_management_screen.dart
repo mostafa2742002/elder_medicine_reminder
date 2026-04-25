@@ -153,6 +153,26 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
     showMessage('تم حذف ${medicine.name} وتحديث التنبيهات');
   }
 
+  Future<void> showTestNotification() async {
+    await NotificationService.showTestNotification();
+
+    if (!mounted) {
+      return;
+    }
+
+    showMessage('تم إرسال تنبيه تجريبي');
+  }
+
+  Future<void> rescheduleMedicineNotifications() async {
+    await NotificationService.scheduleAllMedicineNotifications();
+
+    if (!mounted) {
+      return;
+    }
+
+    showMessage('تم تحديث تنبيهات الأدوية');
+  }
+
   void showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -167,6 +187,20 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final medicineList = medicines.isEmpty
+        ? const [_EmptyMedicinesMessage()]
+        : medicines.map((medicine) {
+            return _MedicineCard(
+              medicine: medicine,
+              onEdit: () {
+                openEditMedicineScreen(medicine);
+              },
+              onDelete: () {
+                confirmDeleteMedicine(medicine);
+              },
+            );
+          }).toList();
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -188,28 +222,93 @@ class _MedicineManagementScreenState extends State<MedicineManagementScreen> {
             style: TextStyle(fontSize: 18),
           ),
         ),
-        body: medicines.isEmpty
-            ? const _EmptyMedicinesMessage()
-            : RefreshIndicator(
-                onRefresh: loadMedicines,
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                  itemCount: medicines.length,
-                  itemBuilder: (context, index) {
-                    final medicine = medicines[index];
+        body: RefreshIndicator(
+          onRefresh: loadMedicines,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+            children: [
+              _NotificationTestCard(
+                onShowTestNotification: showTestNotification,
+                onRescheduleNotifications: rescheduleMedicineNotifications,
+              ),
+              const SizedBox(height: 16),
+              ...medicineList,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-                    return _MedicineCard(
-                      medicine: medicine,
-                      onEdit: () {
-                        openEditMedicineScreen(medicine);
-                      },
-                      onDelete: () {
-                        confirmDeleteMedicine(medicine);
-                      },
-                    );
-                  },
+class _NotificationTestCard extends StatelessWidget {
+  final VoidCallback onShowTestNotification;
+  final VoidCallback onRescheduleNotifications;
+
+  const _NotificationTestCard({
+    required this.onShowTestNotification,
+    required this.onRescheduleNotifications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.notifications_active,
+              size: 72,
+              color: Colors.green,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'اختبار التنبيهات',
+              style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'استخدم هذا الزر للتأكد أن الهاتف يسمح للتطبيق بإظهار التنبيهات.',
+              style: TextStyle(
+                fontSize: 20,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 58,
+              child: FilledButton.icon(
+                onPressed: onShowTestNotification,
+                icon: const Icon(Icons.notification_add),
+                label: const Text(
+                  'إرسال تنبيه تجريبي',
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton.icon(
+                onPressed: onRescheduleNotifications,
+                icon: const Icon(Icons.refresh),
+                label: const Text(
+                  'تحديث تنبيهات الأدوية',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -220,41 +319,39 @@ class _EmptyMedicinesMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(28),
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.medication,
-                  size: 100,
-                  color: Colors.green,
+    return const Padding(
+      padding: EdgeInsets.only(top: 12),
+      child: Card(
+        child: Padding(
+          padding: EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.medication,
+                size: 100,
+                color: Colors.green,
+              ),
+              SizedBox(height: 22),
+              Text(
+                'لا توجد أدوية حتى الآن',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
                 ),
-                SizedBox(height: 22),
-                Text(
-                  'لا توجد أدوية حتى الآن',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    height: 1.3,
-                  ),
-                  textAlign: TextAlign.center,
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                'اضغط على زر "إضافة دواء" لإضافة أول دواء.',
+                style: TextStyle(
+                  fontSize: 22,
+                  height: 1.4,
                 ),
-                SizedBox(height: 12),
-                Text(
-                  'اضغط على زر "إضافة دواء" لإضافة أول دواء.',
-                  style: TextStyle(
-                    fontSize: 22,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

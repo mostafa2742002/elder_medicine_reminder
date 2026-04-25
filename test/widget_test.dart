@@ -5,6 +5,8 @@ void main() {
   testWidgets('App starts successfully', (WidgetTester tester) async {
     await tester.pumpWidget(const ElderMedicineApp());
 
-    expect(find.text('تذكير الدواء'), findsOneWidget);
+    expect(find.text('الآن'), findsOneWidget);
+    expect(find.text('سجل الدواء'), findsOneWidget);
+    expect(find.text('إدارة الأدوية'), findsOneWidget);
   });
 }

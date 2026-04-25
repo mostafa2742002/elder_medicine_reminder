@@ -1,45 +1,57 @@
-import 'medicine_status.dart';
-
 class MedicineHistory {
   final String id;
   final String medicineId;
   final String medicineName;
-  final DateTime scheduledDate;
-  final MedicineStatus status;
-  final DateTime? takenAt;
+  final String medicineDosage;
+  final String? medicineImagePath;
+  final String status;
+  final DateTime createdAt;
 
   const MedicineHistory({
     required this.id,
     required this.medicineId,
     required this.medicineName,
-    required this.scheduledDate,
+    required this.medicineDosage,
+    this.medicineImagePath,
     required this.status,
-    this.takenAt,
+    required this.createdAt,
   });
+
+  bool get isTaken => status == MedicineHistoryStatus.taken;
+
+  bool get isMissed => status == MedicineHistoryStatus.missed;
+
+  bool get isPending => status == MedicineHistoryStatus.pending;
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'medicineId': medicineId,
       'medicineName': medicineName,
-      'scheduledDate': scheduledDate.toIso8601String(),
-      'status': status.toJson(),
-      'takenAt': takenAt?.toIso8601String(),
+      'medicineDosage': medicineDosage,
+      'medicineImagePath': medicineImagePath,
+      'status': status,
+      'createdAt': createdAt.toIso8601String(),
     };
   }
 
   factory MedicineHistory.fromJson(Map<String, dynamic> json) {
-    final takenAtValue = json['takenAt'];
-
     return MedicineHistory(
       id: json['id'] as String,
       medicineId: json['medicineId'] as String,
       medicineName: json['medicineName'] as String,
-      scheduledDate: DateTime.parse(json['scheduledDate'] as String),
-      status: MedicineStatus.fromJson(json['status'] as String),
-      takenAt: takenAtValue == null
-          ? null
-          : DateTime.parse(takenAtValue as String),
+      medicineDosage: json['medicineDosage'] as String? ?? '',
+      medicineImagePath: json['medicineImagePath'] as String?,
+      status: json['status'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
+}
+
+class MedicineHistoryStatus {
+  static const String pending = 'pending';
+  static const String taken = 'taken';
+  static const String missed = 'missed';
+
+  const MedicineHistoryStatus._();
 }

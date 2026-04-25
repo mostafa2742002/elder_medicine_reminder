@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as timezone_data;
@@ -57,15 +58,7 @@ class NotificationService {
     );
 
     await _checkIfAppWasLaunchedByNotification();
-
-    if (Platform.isAndroid) {
-      final androidPlugin =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-
-      await androidPlugin?.requestNotificationsPermission();
-      await androidPlugin?.requestExactAlarmsPermission();
-    }
+    await _requestAndroidNotificationPermissions();
   }
 
   static Future<void> scheduleAllMedicineNotifications() async {
@@ -91,30 +84,38 @@ class NotificationService {
     }
 
     final notificationId = _createNotificationId(medicine.id);
+    final scheduledDate = _nextInstanceOfTime(
+      medicine.startHour,
+      medicine.startMinute,
+    );
 
-    await _notificationsPlugin.zonedSchedule(
-      id: notificationId,
-      title: 'حان وقت الدواء',
-      body: '${medicine.name} - ${medicine.dosage}',
-      scheduledDate: _nextInstanceOfTime(
-        medicine.startHour,
-        medicine.startMinute,
-      ),
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _medicineChannelId,
-          _medicineChannelName,
-          channelDescription: _medicineChannelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.reminder,
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: 'حان وقت الدواء',
+        body: '${medicine.name} - ${medicine.dosage}',
+        scheduledDate: scheduledDate,
+        notificationDetails: _buildNotificationDetails(
           fullScreenIntent: true,
         ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
-      payload: medicine.id,
-    );
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: medicine.id,
+      );
+    } on PlatformException {
+      await _notificationsPlugin.zonedSchedule(
+        id: notificationId,
+        title: 'حان وقت الدواء',
+        body: '${medicine.name} - ${medicine.dosage}',
+        scheduledDate: scheduledDate,
+        notificationDetails: _buildNotificationDetails(
+          fullScreenIntent: true,
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+        payload: medicine.id,
+      );
+    }
   }
 
   static Future<void> cancelAllMedicineNotifications() async {
@@ -134,18 +135,43 @@ class NotificationService {
       id: 999999,
       title: 'اختبار التنبيه',
       body: 'إذا ظهرت هذه الرسالة، فالتنبيهات تعمل بنجاح.',
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _medicineChannelId,
-          _medicineChannelName,
-          channelDescription: _medicineChannelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
-          category: AndroidNotificationCategory.reminder,
-        ),
+      notificationDetails: _buildNotificationDetails(
+        fullScreenIntent: false,
       ),
       payload: 'test_notification',
     );
+  }
+
+  static NotificationDetails _buildNotificationDetails({
+    required bool fullScreenIntent,
+  }) {
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        _medicineChannelId,
+        _medicineChannelName,
+        channelDescription: _medicineChannelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+        fullScreenIntent: fullScreenIntent,
+        enableVibration: true,
+        playSound: true,
+        autoCancel: true,
+      ),
+    );
+  }
+
+  static Future<void> _requestAndroidNotificationPermissions() async {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    final androidPlugin =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    await androidPlugin?.requestNotificationsPermission();
+    await androidPlugin?.requestExactAlarmsPermission();
   }
 
   static Future<void> _checkIfAppWasLaunchedByNotification() async {

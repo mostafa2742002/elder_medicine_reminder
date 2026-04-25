@@ -79,19 +79,17 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
         medicine.startHour,
       ).toString();
 
-      startMinuteController.text = medicine.startMinute.toString().padLeft(
-            2,
-            '0',
-          );
+      startMinuteController.text = medicine.startMinute == 0
+          ? ''
+          : medicine.startMinute.toString().padLeft(2, '0');
 
       endHourController.text = convertFrom24HourTo12Hour(
         medicine.endHour,
       ).toString();
 
-      endMinuteController.text = medicine.endMinute.toString().padLeft(
-            2,
-            '0',
-          );
+      endMinuteController.text = medicine.endMinute == 0
+          ? ''
+          : medicine.endMinute.toString().padLeft(2, '0');
 
       startPeriod = medicine.startHour < 12 ? 'AM' : 'PM';
       endPeriod = medicine.endHour < 12 ? 'AM' : 'PM';
@@ -138,6 +136,16 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     }
 
     return hour12 + 12;
+  }
+
+  int parseOptionalMinute(String value) {
+    final trimmedValue = value.trim();
+
+    if (trimmedValue.isEmpty) {
+      return 0;
+    }
+
+    return int.parse(trimmedValue);
   }
 
   Future<void> pickMedicineImage(ImageSource imageSource) async {
@@ -369,10 +377,10 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     }
 
     final startHour12 = int.parse(startHourController.text.trim());
-    final startMinute = int.parse(startMinuteController.text.trim());
+    final startMinute = parseOptionalMinute(startMinuteController.text);
 
     final endHour12 = int.parse(endHourController.text.trim());
-    final endMinute = int.parse(endMinuteController.text.trim());
+    final endMinute = parseOptionalMinute(endMinuteController.text);
 
     final startHour24 = convertTo24Hour(startHour12, startPeriod);
     final endHour24 = convertTo24Hour(endHour12, endPeriod);
@@ -427,7 +435,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   String? validateMinute(String? value) {
     if (value == null || value.trim().isEmpty) {
-      return 'هذا الحقل مطلوب';
+      return null;
     }
 
     final minute = int.tryParse(value.trim());
@@ -445,15 +453,22 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   String? validateTimeRange() {
     final startHour12 = int.tryParse(startHourController.text.trim());
-    final startMinute = int.tryParse(startMinuteController.text.trim());
+    final startMinuteText = startMinuteController.text.trim();
 
     final endHour12 = int.tryParse(endHourController.text.trim());
-    final endMinute = int.tryParse(endMinuteController.text.trim());
+    final endMinuteText = endMinuteController.text.trim();
 
-    if (startHour12 == null ||
-        startMinute == null ||
-        endHour12 == null ||
-        endMinute == null) {
+    if (startHour12 == null || endHour12 == null) {
+      return null;
+    }
+
+    final startMinute = startMinuteText.isEmpty
+        ? 0
+        : int.tryParse(startMinuteText);
+
+    final endMinute = endMinuteText.isEmpty ? 0 : int.tryParse(endMinuteText);
+
+    if (startMinute == null || endMinute == null) {
       return null;
     }
 
@@ -670,7 +685,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                         ),
                         const SizedBox(height: 14),
                         const Text(
-                          'مثال: من 5:36 مساءً إلى 6:30 مساءً',
+                          'لو تركت الدقائق فارغة سيتم حفظها 00. مثال: 5 = 5:00',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.black54,
@@ -1016,7 +1031,7 @@ class _TimeInputRow extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'الدقائق',
-                  hintText: '36',
+                  hintText: 'اختياري',
                   border: OutlineInputBorder(),
                 ),
                 style: const TextStyle(fontSize: 22),
