@@ -24,6 +24,8 @@ Future<void> main() async {
     },
   );
 
+  await NotificationService.showPinnedAppShortcutNotification();
+
   runApp(const ElderMedicineApp());
 }
 

@@ -21,6 +21,13 @@ class NotificationService {
   static const String _medicineChannelDescription =
       'تنبيهات مواعيد الدواء اليومية';
 
+  static const String _appShortcutChannelId = 'app_shortcut';
+  static const String _appShortcutChannelName = 'اختصار فتح التطبيق';
+  static const String _appShortcutChannelDescription =
+      'تنبيه ثابت يساعد المستخدم على فتح التطبيق بسرعة';
+
+  static const int _appShortcutNotificationId = 777777;
+
   static bool _wasAppLaunchedByNotification = false;
   static String? _launchNotificationPayload;
 
@@ -61,6 +68,44 @@ class NotificationService {
     await _requestAndroidNotificationPermissions();
   }
 
+  static Future<void> showPinnedAppShortcutNotification() async {
+    if (kIsWeb) {
+      return;
+    }
+
+    await _notificationsPlugin.show(
+      id: _appShortcutNotificationId,
+      title: 'تذكير الدواء',
+      body: 'اضغط هنا لفتح التطبيق ومتابعة الدواء',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _appShortcutChannelId,
+          _appShortcutChannelName,
+          channelDescription: _appShortcutChannelDescription,
+          importance: Importance.low,
+          priority: Priority.low,
+          category: AndroidNotificationCategory.status,
+          ongoing: true,
+          autoCancel: false,
+          onlyAlertOnce: true,
+          showWhen: false,
+          visibility: NotificationVisibility.public,
+        ),
+      ),
+      payload: 'open_app_shortcut',
+    );
+  }
+
+  static Future<void> cancelPinnedAppShortcutNotification() async {
+    if (kIsWeb) {
+      return;
+    }
+
+    await _notificationsPlugin.cancel(
+      id: _appShortcutNotificationId,
+    );
+  }
+
   static Future<void> scheduleAllMedicineNotifications() async {
     if (kIsWeb) {
       return;
@@ -84,6 +129,7 @@ class NotificationService {
     }
 
     final notificationId = _createNotificationId(medicine.id);
+
     final scheduledDate = _nextInstanceOfTime(
       medicine.startHour,
       medicine.startMinute,
@@ -95,7 +141,7 @@ class NotificationService {
         title: 'حان وقت الدواء',
         body: '${medicine.name} - ${medicine.dosage}',
         scheduledDate: scheduledDate,
-        notificationDetails: _buildNotificationDetails(
+        notificationDetails: _buildMedicineNotificationDetails(
           fullScreenIntent: true,
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
@@ -108,7 +154,7 @@ class NotificationService {
         title: 'حان وقت الدواء',
         body: '${medicine.name} - ${medicine.dosage}',
         scheduledDate: scheduledDate,
-        notificationDetails: _buildNotificationDetails(
+        notificationDetails: _buildMedicineNotificationDetails(
           fullScreenIntent: true,
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -124,6 +170,7 @@ class NotificationService {
     }
 
     await _notificationsPlugin.cancelAll();
+    await showPinnedAppShortcutNotification();
   }
 
   static Future<void> showTestNotification() async {
@@ -135,14 +182,14 @@ class NotificationService {
       id: 999999,
       title: 'اختبار التنبيه',
       body: 'إذا ظهرت هذه الرسالة، فالتنبيهات تعمل بنجاح.',
-      notificationDetails: _buildNotificationDetails(
+      notificationDetails: _buildMedicineNotificationDetails(
         fullScreenIntent: false,
       ),
       payload: 'test_notification',
     );
   }
 
-  static NotificationDetails _buildNotificationDetails({
+  static NotificationDetails _buildMedicineNotificationDetails({
     required bool fullScreenIntent,
   }) {
     return NotificationDetails(
@@ -157,6 +204,7 @@ class NotificationService {
         enableVibration: true,
         playSound: true,
         autoCancel: true,
+        visibility: NotificationVisibility.public,
       ),
     );
   }
