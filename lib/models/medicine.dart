@@ -3,6 +3,7 @@ class Medicine {
   final String name;
   final String dosage;
   final String? imagePath;
+  final String? voiceMessagePath;
   final int startHour;
   final int startMinute;
   final int endHour;
@@ -13,6 +14,7 @@ class Medicine {
     required this.name,
     required this.dosage,
     this.imagePath,
+    this.voiceMessagePath,
     required this.startHour,
     this.startMinute = 0,
     required this.endHour,
@@ -25,6 +27,7 @@ class Medicine {
       'name': name,
       'dosage': dosage,
       'imagePath': imagePath,
+      'voiceMessagePath': voiceMessagePath,
       'startHour': startHour,
       'startMinute': startMinute,
       'endHour': endHour,
@@ -38,6 +41,7 @@ class Medicine {
       name: json['name'] as String,
       dosage: json['dosage'] as String,
       imagePath: json['imagePath'] as String?,
+      voiceMessagePath: json['voiceMessagePath'] as String?,
       startHour: json['startHour'] as int,
       startMinute: json['startMinute'] as int? ?? 0,
       endHour: json['endHour'] as int,

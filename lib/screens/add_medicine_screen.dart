@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 
 import '../models/medicine.dart';
 import '../repositories/medicine_repository.dart';
@@ -25,6 +28,10 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   final medicineRepository = MedicineRepository();
   final imagePicker = ImagePicker();
+  final audioRecorder = AudioRecorder();
+  final audioPlayer = AudioPlayer();
+
+  StreamSubscription<void>? audioPlayerCompleteSubscription;
 
   final nameController = TextEditingController();
   final dosageController = TextEditingController();
@@ -36,9 +43,13 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   final endMinuteController = TextEditingController();
 
   String? imagePath;
+  String? voiceMessagePath;
 
   String startPeriod = 'AM';
   String endPeriod = 'AM';
+
+  bool isRecordingVoice = false;
+  bool isPlayingVoice = false;
 
   bool get isEditMode => widget.medicineToEdit != null;
 
@@ -46,12 +57,23 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   void initState() {
     super.initState();
 
+    audioPlayerCompleteSubscription = audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlayingVoice = false;
+      });
+    });
+
     final medicine = widget.medicineToEdit;
 
     if (medicine != null) {
       nameController.text = medicine.name;
       dosageController.text = medicine.dosage;
       imagePath = medicine.imagePath;
+      voiceMessagePath = medicine.voiceMessagePath;
 
       startHourController.text = convertFrom24HourTo12Hour(
         medicine.startHour,
@@ -78,12 +100,17 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   @override
   void dispose() {
+    audioPlayerCompleteSubscription?.cancel();
+    audioRecorder.dispose();
+    audioPlayer.dispose();
+
     nameController.dispose();
     dosageController.dispose();
     startHourController.dispose();
     startMinuteController.dispose();
     endHourController.dispose();
     endMinuteController.dispose();
+
     super.dispose();
   }
 
@@ -176,6 +203,152 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     });
   }
 
+  Future<String> createNewVoiceMessagePath() async {
+    final appDirectory = await getApplicationDocumentsDirectory();
+
+    final medicineVoiceDirectory = Directory(
+      path.join(appDirectory.path, 'medicine_voice_messages'),
+    );
+
+    if (!await medicineVoiceDirectory.exists()) {
+      await medicineVoiceDirectory.create(recursive: true);
+    }
+
+    final fileName = '${DateTime.now().microsecondsSinceEpoch}.m4a';
+
+    return path.join(
+      medicineVoiceDirectory.path,
+      fileName,
+    );
+  }
+
+  Future<void> startVoiceRecording() async {
+    try {
+      final hasPermission = await audioRecorder.hasPermission();
+
+      if (!hasPermission) {
+        showErrorMessage('اسمح للتطبيق باستخدام الميكروفون');
+        return;
+      }
+
+      await audioPlayer.stop();
+
+      final newVoicePath = await createNewVoiceMessagePath();
+
+      await audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          sampleRate: 44100,
+          numChannels: 1,
+          autoGain: true,
+          echoCancel: true,
+          noiseSuppress: true,
+        ),
+        path: newVoicePath,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isRecordingVoice = true;
+        isPlayingVoice = false;
+      });
+    } catch (exception) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isRecordingVoice = false;
+      });
+
+      showErrorMessage('حدث خطأ أثناء بدء التسجيل');
+    }
+  }
+
+  Future<void> stopVoiceRecording() async {
+    try {
+      final savedPath = await audioRecorder.stop();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isRecordingVoice = false;
+
+        if (savedPath != null && savedPath.isNotEmpty) {
+          voiceMessagePath = savedPath;
+        }
+      });
+    } catch (exception) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isRecordingVoice = false;
+      });
+
+      showErrorMessage('حدث خطأ أثناء إيقاف التسجيل');
+    }
+  }
+
+  Future<void> playOrStopVoiceMessage() async {
+    final currentVoicePath = voiceMessagePath;
+
+    if (currentVoicePath == null || currentVoicePath.isEmpty) {
+      return;
+    }
+
+    final voiceFile = File(currentVoicePath);
+
+    if (!voiceFile.existsSync()) {
+      showErrorMessage('ملف الرسالة الصوتية غير موجود');
+      return;
+    }
+
+    if (isPlayingVoice) {
+      await audioPlayer.stop();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlayingVoice = false;
+      });
+
+      return;
+    }
+
+    await audioPlayer.play(DeviceFileSource(currentVoicePath));
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isPlayingVoice = true;
+    });
+  }
+
+  Future<void> removeVoiceMessage() async {
+    await audioPlayer.stop();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      voiceMessagePath = null;
+      isPlayingVoice = false;
+      isRecordingVoice = false;
+    });
+  }
+
   Future<void> saveMedicine() async {
     final isValid = formKey.currentState!.validate();
 
@@ -187,6 +360,11 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
     if (timeRangeError != null) {
       showErrorMessage(timeRangeError);
+      return;
+    }
+
+    if (isRecordingVoice) {
+      showErrorMessage('أوقف التسجيل أولًا قبل حفظ الدواء');
       return;
     }
 
@@ -205,6 +383,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
       name: nameController.text.trim(),
       dosage: dosageController.text.trim(),
       imagePath: imagePath,
+      voiceMessagePath: voiceMessagePath,
       startHour: startHour24,
       startMinute: startMinute,
       endHour: endHour24,
@@ -351,8 +530,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final title = isEditMode ? 'تعديل الدواء' : 'إضافة دواء';
     final headerTitle = isEditMode ? 'تعديل بيانات الدواء' : 'أضف دواء جديد';
     final headerSubtitle = isEditMode
-        ? 'عدّل اسم الدواء أو الجرعة أو الصورة أو فترة الدواء.'
-        : 'اكتب اسم الدواء والجرعة وأضف صورة واضحة للدواء.';
+        ? 'عدّل اسم الدواء أو الجرعة أو الصورة أو الرسالة الصوتية أو فترة الدواء.'
+        : 'اكتب بيانات الدواء وأضف صورة ورسالة صوتية واضحة.';
     final saveButtonText = isEditMode ? 'حفظ التعديل' : 'حفظ الدواء';
 
     return Directionality(
@@ -424,6 +603,20 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                         pickMedicineImage(ImageSource.camera);
                       },
                       onRemoveImage: removeMedicineImage,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _FormSectionCard(
+                    title: 'الرسالة الصوتية',
+                    child: _VoiceMessageRecorderCard(
+                      hasVoiceMessage: voiceMessagePath != null &&
+                          voiceMessagePath!.isNotEmpty,
+                      isRecording: isRecordingVoice,
+                      isPlaying: isPlayingVoice,
+                      onStartRecording: startVoiceRecording,
+                      onStopRecording: stopVoiceRecording,
+                      onPlayOrStop: playOrStopVoiceMessage,
+                      onRemove: removeVoiceMessage,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -603,6 +796,141 @@ class _MedicineImagePickerCard extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
               label: const Text(
                 'حذف الصورة',
+                style: TextStyle(fontSize: 19),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _VoiceMessageRecorderCard extends StatelessWidget {
+  final bool hasVoiceMessage;
+  final bool isRecording;
+  final bool isPlaying;
+  final VoidCallback onStartRecording;
+  final VoidCallback onStopRecording;
+  final VoidCallback onPlayOrStop;
+  final VoidCallback onRemove;
+
+  const _VoiceMessageRecorderCard({
+    required this.hasVoiceMessage,
+    required this.isRecording,
+    required this.isPlaying,
+    required this.onStartRecording,
+    required this.onStopRecording,
+    required this.onPlayOrStop,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = isRecording
+        ? 'جاري التسجيل الآن...'
+        : hasVoiceMessage
+            ? 'تم حفظ رسالة صوتية'
+            : 'لا توجد رسالة صوتية حتى الآن';
+
+    final statusIcon = isRecording
+        ? Icons.mic
+        : hasVoiceMessage
+            ? Icons.check_circle
+            : Icons.record_voice_over;
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Colors.green.shade200,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                statusIcon,
+                size: 78,
+                color: Colors.green,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                statusText,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.bold,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'مثال: يا ماما، خدي دواء الضغط الآن.',
+                style: TextStyle(
+                  fontSize: 19,
+                  color: Colors.black54,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (!isRecording)
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: FilledButton.icon(
+              onPressed: onStartRecording,
+              icon: const Icon(Icons.mic),
+              label: Text(
+                hasVoiceMessage ? 'تسجيل رسالة جديدة' : 'بدء تسجيل الرسالة',
+                style: const TextStyle(fontSize: 21),
+              ),
+            ),
+          ),
+        if (isRecording)
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: FilledButton.icon(
+              onPressed: onStopRecording,
+              icon: const Icon(Icons.stop_circle),
+              label: const Text(
+                'إيقاف التسجيل',
+                style: TextStyle(fontSize: 21),
+              ),
+            ),
+          ),
+        if (hasVoiceMessage && !isRecording) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 58,
+            child: OutlinedButton.icon(
+              onPressed: onPlayOrStop,
+              icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
+              label: Text(
+                isPlaying ? 'إيقاف التشغيل' : 'تشغيل الرسالة',
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text(
+                'حذف الرسالة الصوتية',
                 style: TextStyle(fontSize: 19),
               ),
             ),

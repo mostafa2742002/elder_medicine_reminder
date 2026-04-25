@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../models/medicine.dart';
@@ -283,6 +285,9 @@ class _MedicineCard extends StatelessWidget {
       medicine.endMinute,
     );
 
+    final hasVoiceMessage =
+        medicine.voiceMessagePath != null && medicine.voiceMessagePath!.isNotEmpty;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -327,6 +332,13 @@ class _MedicineCard extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
+            if (hasVoiceMessage) ...[
+              const SizedBox(height: 14),
+              _VoiceMessagePlayerButton(
+                voiceMessagePath: medicine.voiceMessagePath!,
+                label: 'تشغيل الرسالة الصوتية',
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -407,6 +419,97 @@ class _MedicineImage extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _VoiceMessagePlayerButton extends StatefulWidget {
+  final String voiceMessagePath;
+  final String label;
+
+  const _VoiceMessagePlayerButton({
+    required this.voiceMessagePath,
+    required this.label,
+  });
+
+  @override
+  State<_VoiceMessagePlayerButton> createState() =>
+      _VoiceMessagePlayerButtonState();
+}
+
+class _VoiceMessagePlayerButtonState extends State<_VoiceMessagePlayerButton> {
+  final audioPlayer = AudioPlayer();
+
+  StreamSubscription<void>? playerCompleteSubscription;
+
+  bool isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    playerCompleteSubscription = audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlaying = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    playerCompleteSubscription?.cancel();
+    audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> playOrStop() async {
+    if (isPlaying) {
+      await audioPlayer.stop();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlaying = false;
+      });
+
+      return;
+    }
+
+    final voiceFile = File(widget.voiceMessagePath);
+
+    if (!voiceFile.existsSync()) {
+      return;
+    }
+
+    await audioPlayer.play(DeviceFileSource(widget.voiceMessagePath));
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isPlaying = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 58,
+      child: OutlinedButton.icon(
+        onPressed: playOrStop,
+        icon: Icon(isPlaying ? Icons.stop : Icons.play_arrow),
+        label: Text(
+          isPlaying ? 'إيقاف الرسالة' : widget.label,
+          style: const TextStyle(fontSize: 20),
+        ),
       ),
     );
   }

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../models/medicine.dart';
@@ -76,6 +78,7 @@ class _NowScreenState extends State<NowScreen> {
         body: SafeArea(
           child: hasActiveMedicine
               ? _CurrentMedicineAlert(
+                  key: ValueKey(activeMedicines.first.id),
                   medicine: activeMedicines.first,
                   remainingCount: activeMedicines.length,
                   onTaken: markMedicineAsTaken,
@@ -94,27 +97,135 @@ class _NowScreenState extends State<NowScreen> {
   }
 }
 
-class _CurrentMedicineAlert extends StatelessWidget {
+class _CurrentMedicineAlert extends StatefulWidget {
   final Medicine medicine;
   final int remainingCount;
   final void Function(Medicine medicine) onTaken;
 
   const _CurrentMedicineAlert({
+    super.key,
     required this.medicine,
     required this.remainingCount,
     required this.onTaken,
   });
 
   @override
+  State<_CurrentMedicineAlert> createState() => _CurrentMedicineAlertState();
+}
+
+class _CurrentMedicineAlertState extends State<_CurrentMedicineAlert> {
+  final audioPlayer = AudioPlayer();
+
+  StreamSubscription<void>? playerCompleteSubscription;
+
+  bool isPlayingVoice = false;
+
+  bool get hasVoiceMessage {
+    final voicePath = widget.medicine.voiceMessagePath;
+
+    return voicePath != null && voicePath.isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    playerCompleteSubscription = audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlayingVoice = false;
+      });
+    });
+
+    playVoiceMessageAfterOpening();
+  }
+
+  @override
+  void dispose() {
+    playerCompleteSubscription?.cancel();
+    audioPlayer.dispose();
+    super.dispose();
+  }
+
+  void playVoiceMessageAfterOpening() {
+    if (!hasVoiceMessage) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      playOrStopVoiceMessage();
+    });
+  }
+
+  Future<void> playOrStopVoiceMessage() async {
+    final voicePath = widget.medicine.voiceMessagePath;
+
+    if (voicePath == null || voicePath.isEmpty) {
+      return;
+    }
+
+    final voiceFile = File(voicePath);
+
+    if (!voiceFile.existsSync()) {
+      return;
+    }
+
+    if (isPlayingVoice) {
+      await audioPlayer.stop();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isPlayingVoice = false;
+      });
+
+      return;
+    }
+
+    await audioPlayer.play(DeviceFileSource(voicePath));
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isPlayingVoice = true;
+    });
+  }
+
+  Future<void> markCurrentMedicineAsTaken() async {
+    await audioPlayer.stop();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isPlayingVoice = false;
+    });
+
+    widget.onTaken(widget.medicine);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final startTime = TimeFormatter.formatTime12(
-      medicine.startHour,
-      medicine.startMinute,
+      widget.medicine.startHour,
+      widget.medicine.startMinute,
     );
 
     final endTime = TimeFormatter.formatTime12(
-      medicine.endHour,
-      medicine.endMinute,
+      widget.medicine.endHour,
+      widget.medicine.endMinute,
     );
 
     return Container(
@@ -124,13 +235,13 @@ class _CurrentMedicineAlert extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            _RemainingMedicineBadge(remainingCount: remainingCount),
+            _RemainingMedicineBadge(remainingCount: widget.remainingCount),
             const SizedBox(height: 18),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _MedicineMainImage(imagePath: medicine.imagePath),
+                    _MedicineMainImage(imagePath: widget.medicine.imagePath),
                     const SizedBox(height: 24),
                     const Text(
                       'حان وقت الدواء',
@@ -142,7 +253,7 @@ class _CurrentMedicineAlert extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      medicine.name,
+                      widget.medicine.name,
                       style: const TextStyle(
                         fontSize: 44,
                         fontWeight: FontWeight.bold,
@@ -152,7 +263,7 @@ class _CurrentMedicineAlert extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      medicine.dosage,
+                      widget.medicine.dosage,
                       style: const TextStyle(
                         fontSize: 28,
                         height: 1.3,
@@ -168,6 +279,29 @@ class _CurrentMedicineAlert extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (hasVoiceMessage) ...[
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 70,
+                        child: OutlinedButton.icon(
+                          onPressed: playOrStopVoiceMessage,
+                          icon: Icon(
+                            isPlayingVoice ? Icons.stop : Icons.volume_up,
+                            size: 30,
+                          ),
+                          label: Text(
+                            isPlayingVoice
+                                ? 'إيقاف الرسالة الصوتية'
+                                : 'تشغيل رسالة الأسرة',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -177,9 +311,7 @@ class _CurrentMedicineAlert extends StatelessWidget {
               width: double.infinity,
               height: 86,
               child: FilledButton.icon(
-                onPressed: () {
-                  onTaken(medicine);
-                },
+                onPressed: markCurrentMedicineAsTaken,
                 icon: const Icon(
                   Icons.check_circle,
                   size: 34,
