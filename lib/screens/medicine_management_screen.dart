@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/medicine.dart';
@@ -288,12 +290,8 @@ class _MedicineCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(
-              Icons.medication,
-              size: 70,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 12),
+            _MedicineImage(imagePath: medicine.imagePath),
+            const SizedBox(height: 14),
             Text(
               medicine.name,
               style: const TextStyle(
@@ -357,6 +355,58 @@ class _MedicineCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MedicineImage extends StatelessWidget {
+  final String? imagePath;
+
+  const _MedicineImage({
+    required this.imagePath,
+  });
+
+  bool get hasImage => imagePath != null && imagePath!.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasImage) {
+      return Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.greenAccent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: const Icon(
+          Icons.medication,
+          size: 85,
+          color: Colors.green,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Image.file(
+        File(imagePath!),
+        height: 170,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: Colors.greenAccent.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.medication,
+              size: 85,
+              color: Colors.green,
+            ),
+          );
+        },
       ),
     );
   }

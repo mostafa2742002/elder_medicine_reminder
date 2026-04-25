@@ -1,4 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 import '../models/medicine.dart';
 import '../repositories/medicine_repository.dart';
@@ -19,6 +24,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   final formKey = GlobalKey<FormState>();
 
   final medicineRepository = MedicineRepository();
+  final imagePicker = ImagePicker();
 
   final nameController = TextEditingController();
   final dosageController = TextEditingController();
@@ -28,6 +34,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
 
   final endHourController = TextEditingController();
   final endMinuteController = TextEditingController();
+
+  String? imagePath;
 
   String startPeriod = 'AM';
   String endPeriod = 'AM';
@@ -43,6 +51,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     if (medicine != null) {
       nameController.text = medicine.name;
       dosageController.text = medicine.dosage;
+      imagePath = medicine.imagePath;
 
       startHourController.text = convertFrom24HourTo12Hour(
         medicine.startHour,
@@ -104,6 +113,69 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     return hour12 + 12;
   }
 
+  Future<void> pickMedicineImage(ImageSource imageSource) async {
+    try {
+      final pickedImage = await imagePicker.pickImage(
+        source: imageSource,
+        imageQuality: 85,
+      );
+
+      if (pickedImage == null) {
+        return;
+      }
+
+      final savedImagePath = await saveImageInsideAppFolder(pickedImage);
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        imagePath = savedImagePath;
+      });
+    } catch (exception) {
+      if (!mounted) {
+        return;
+      }
+
+      showErrorMessage('حدث خطأ أثناء اختيار الصورة');
+    }
+  }
+
+  Future<String> saveImageInsideAppFolder(XFile pickedImage) async {
+    final appDirectory = await getApplicationDocumentsDirectory();
+
+    final medicineImagesDirectory = Directory(
+      path.join(appDirectory.path, 'medicine_images'),
+    );
+
+    if (!await medicineImagesDirectory.exists()) {
+      await medicineImagesDirectory.create(recursive: true);
+    }
+
+    final extension = path.extension(pickedImage.path).isEmpty
+        ? '.jpg'
+        : path.extension(pickedImage.path);
+
+    final fileName = '${DateTime.now().microsecondsSinceEpoch}$extension';
+
+    final savedImagePath = path.join(
+      medicineImagesDirectory.path,
+      fileName,
+    );
+
+    final pickedImageFile = File(pickedImage.path);
+    final savedImageFile = await pickedImageFile.copy(savedImagePath);
+
+    return savedImageFile.path;
+  }
+
+  void removeMedicineImage() {
+    setState(() {
+      imagePath = null;
+    });
+  }
+
   Future<void> saveMedicine() async {
     final isValid = formKey.currentState!.validate();
 
@@ -132,6 +204,7 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
           DateTime.now().microsecondsSinceEpoch.toString(),
       name: nameController.text.trim(),
       dosage: dosageController.text.trim(),
+      imagePath: imagePath,
       startHour: startHour24,
       startMinute: startMinute,
       endHour: endHour24,
@@ -240,22 +313,33 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   }) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'الفترة',
         border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 18,
+        ),
       ),
       style: const TextStyle(
-        fontSize: 20,
+        fontSize: 18,
         color: Colors.black,
       ),
       items: const [
         DropdownMenuItem(
           value: 'AM',
-          child: Text('صباحًا'),
+          child: Text(
+            'صباحًا',
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         DropdownMenuItem(
           value: 'PM',
-          child: Text('مساءً'),
+          child: Text(
+            'مساءً',
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
       onChanged: onChanged,
@@ -267,8 +351,8 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
     final title = isEditMode ? 'تعديل الدواء' : 'إضافة دواء';
     final headerTitle = isEditMode ? 'تعديل بيانات الدواء' : 'أضف دواء جديد';
     final headerSubtitle = isEditMode
-        ? 'عدّل اسم الدواء أو الجرعة أو فترة الدواء.'
-        : 'اكتب اسم الدواء والجرعة والفترة التي يمكن أخذ الدواء خلالها.';
+        ? 'عدّل اسم الدواء أو الجرعة أو الصورة أو فترة الدواء.'
+        : 'اكتب اسم الدواء والجرعة وأضف صورة واضحة للدواء.';
     final saveButtonText = isEditMode ? 'حفظ التعديل' : 'حفظ الدواء';
 
     return Directionality(
@@ -326,6 +410,20 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
                           validator: validateRequiredText,
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _FormSectionCard(
+                    title: 'صورة الدواء',
+                    child: _MedicineImagePickerCard(
+                      imagePath: imagePath,
+                      onPickFromGallery: () {
+                        pickMedicineImage(ImageSource.gallery);
+                      },
+                      onTakePhoto: () {
+                        pickMedicineImage(ImageSource.camera);
+                      },
+                      onRemoveImage: removeMedicineImage,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -427,6 +525,121 @@ class _AddMedicineScreenState extends State<AddMedicineScreen> {
   }
 }
 
+class _MedicineImagePickerCard extends StatelessWidget {
+  final String? imagePath;
+  final VoidCallback onPickFromGallery;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onRemoveImage;
+
+  const _MedicineImagePickerCard({
+    required this.imagePath,
+    required this.onPickFromGallery,
+    required this.onTakePhoto,
+    required this.onRemoveImage,
+  });
+
+  bool get hasImage => imagePath != null && imagePath!.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          height: 220,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Colors.green.shade200,
+            ),
+          ),
+          child: hasImage
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.file(
+                    File(imagePath!),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const _ImagePlaceholder();
+                    },
+                  ),
+                )
+              : const _ImagePlaceholder(),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 58,
+          child: FilledButton.icon(
+            onPressed: onPickFromGallery,
+            icon: const Icon(Icons.photo_library),
+            label: const Text(
+              'اختيار صورة من المعرض',
+              style: TextStyle(fontSize: 20),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 58,
+          child: OutlinedButton.icon(
+            onPressed: onTakePhoto,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text(
+              'التقاط صورة بالكاميرا',
+              style: TextStyle(fontSize: 20),
+            ),
+          ),
+        ),
+        if (hasImage) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: TextButton.icon(
+              onPressed: onRemoveImage,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text(
+                'حذف الصورة',
+                style: TextStyle(fontSize: 19),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.image,
+          size: 80,
+          color: Colors.green,
+        ),
+        SizedBox(height: 12),
+        Text(
+          'أضف صورة واضحة للدواء',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
 class _TimeInputRow extends StatelessWidget {
   final TextEditingController hourController;
   final TextEditingController minuteController;
@@ -451,41 +664,43 @@ class _TimeInputRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: TextFormField(
-            controller: hourController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'الساعة',
-              hintText: '5',
-              border: OutlineInputBorder(),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: hourController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'الساعة',
+                  hintText: '5',
+                  border: OutlineInputBorder(),
+                ),
+                style: const TextStyle(fontSize: 22),
+                validator: validateHour,
+              ),
             ),
-            style: const TextStyle(fontSize: 22),
-            validator: validateHour,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: TextFormField(
-            controller: minuteController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'الدقائق',
-              hintText: '36',
-              border: OutlineInputBorder(),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: minuteController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'الدقائق',
+                  hintText: '36',
+                  border: OutlineInputBorder(),
+                ),
+                style: const TextStyle(fontSize: 22),
+                validator: validateMinute,
+              ),
             ),
-            style: const TextStyle(fontSize: 22),
-            validator: validateMinute,
-          ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: buildPeriodDropdown(
-            value: period,
-            onChanged: onPeriodChanged,
-          ),
+        const SizedBox(height: 12),
+        buildPeriodDropdown(
+          value: period,
+          onChanged: onPeriodChanged,
         ),
       ],
     );

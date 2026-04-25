@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/medicine.dart';
@@ -123,50 +125,54 @@ class _CurrentMedicineAlert extends StatelessWidget {
         child: Column(
           children: [
             _RemainingMedicineBadge(remainingCount: remainingCount),
-            const Spacer(),
-            const Icon(
-              Icons.medication_liquid,
-              size: 130,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 26),
-            const Text(
-              'حان وقت الدواء',
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
+            const SizedBox(height: 18),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _MedicineMainImage(imagePath: medicine.imagePath),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'حان وقت الدواء',
+                      style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      medicine.name,
+                      style: const TextStyle(
+                        fontSize: 44,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      medicine.dosage,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        height: 1.3,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'من $startTime إلى $endTime',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        height: 1.3,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              medicine.name,
-              style: const TextStyle(
-                fontSize: 44,
-                fontWeight: FontWeight.bold,
-                height: 1.2,
-              ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 18),
-            Text(
-              medicine.dosage,
-              style: const TextStyle(
-                fontSize: 28,
-                height: 1.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'من $startTime إلى $endTime',
-              style: const TextStyle(
-                fontSize: 24,
-                height: 1.3,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const Spacer(),
             SizedBox(
               width: double.infinity,
               height: 86,
@@ -190,6 +196,68 @@ class _CurrentMedicineAlert extends StatelessWidget {
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MedicineMainImage extends StatelessWidget {
+  final String? imagePath;
+
+  const _MedicineMainImage({
+    required this.imagePath,
+  });
+
+  bool get hasImage => imagePath != null && imagePath!.isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasImage) {
+      return Container(
+        height: 230,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.green.shade200,
+            width: 2,
+          ),
+        ),
+        child: const Icon(
+          Icons.medication_liquid,
+          size: 130,
+          color: Colors.green,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Image.file(
+        File(imagePath!),
+        height: 260,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 230,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.green.shade200,
+                width: 2,
+              ),
+            ),
+            child: const Icon(
+              Icons.medication_liquid,
+              size: 130,
+              color: Colors.green,
+            ),
+          );
+        },
       ),
     );
   }
