@@ -21,10 +21,10 @@ class NotificationService {
   static const String _medicineChannelDescription =
       'تنبيهات مواعيد الدواء اليومية';
 
-  static const String _appShortcutChannelId = 'app_shortcut';
+  static const String _appShortcutChannelId = 'app_shortcut_v2';
   static const String _appShortcutChannelName = 'اختصار فتح التطبيق';
   static const String _appShortcutChannelDescription =
-      'تنبيه ثابت يساعد المستخدم على فتح التطبيق بسرعة';
+      'تنبيه ثابت وواضح يساعد المستخدم على فتح التطبيق بسرعة';
 
   static const int _appShortcutNotificationId = 777777;
 
@@ -76,20 +76,27 @@ class NotificationService {
     await _notificationsPlugin.show(
       id: _appShortcutNotificationId,
       title: 'تذكير الدواء',
-      body: 'اضغط هنا لفتح التطبيق ومتابعة الدواء',
+      body: 'اضغط هنا لفتح التطبيق ومتابعة الدواء بسهولة',
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           _appShortcutChannelId,
           _appShortcutChannelName,
           channelDescription: _appShortcutChannelDescription,
-          importance: Importance.low,
-          priority: Priority.low,
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
           category: AndroidNotificationCategory.status,
           ongoing: true,
           autoCancel: false,
           onlyAlertOnce: true,
           showWhen: false,
           visibility: NotificationVisibility.public,
+          styleInformation: BigTextStyleInformation(
+            'اضغط هنا لفتح التطبيق بسرعة.\n\n'
+            'يمكنك متابعة الدواء الحالي، سماع الرسالة الصوتية، '
+            'والضغط على زر "أخذت الدواء" بسهولة.',
+            contentTitle: 'تذكير الدواء',
+            summaryText: 'اختصار دائم لفتح التطبيق',
+          ),
         ),
       ),
       payload: 'open_app_shortcut',
